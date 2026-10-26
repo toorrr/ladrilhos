@@ -263,7 +263,8 @@ function buildGrid(grout, origin){
       if(w>0&&h>0) a += w*h;
     }
     const k = j*cols+i; area[k] = a;
-    if(a>1){ inside[k] = 1; total++; if(a<99.5) cut++; }
+    // sobra com menos de 3 cm não leva ladrilho: na obra ela some no rejunte e no rodapé
+    if(a>30){ inside[k] = 1; total++; if(a<99.5) cut++; }
   }
   return {g,p,x0,y0,cols,rows,n,area,inside,total,cut,grout,origin};
 }
@@ -749,6 +750,7 @@ const GENS = {
       if(i<L || i>R || j<T || j>B){
         // moldura junto às paredes, acompanhando o contorno do chão
         const w = c.dist[k];
+        if(w<0) return CR;
         if(w===0) return TE;
         if(w===1) return CR;
         if(w===2) return FE;
@@ -815,7 +817,8 @@ function generate(style, seed, scale, inten, quiet){
   let si = 0, sj = 0; for(const k of tg){ si += k%G.cols; sj += (k/G.cols)|0; }
   const c = {rand:rng(seed), R:roles(), scale, inten:inten/100, ci:si/tg.length, cj:sj/tg.length};
   if(style==='moldura'||style==='foto') c.dist = distTo(tg);
-  if(style==='tapete'){ c.box = rugBox(tg); c.dist = distTo(tg); }
+  // a moldura do tapete conta só ladrilhos inteiros, para ter a mesma grossura em todas as paredes
+  if(style==='tapete'){ c.box = rugBox(tg); c.dist = distTo(tg.filter(k=>G.area[k]>=99.5)); }
   const f = GENS[style].fn(c);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
   changed();
