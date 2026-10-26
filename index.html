@@ -97,7 +97,9 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .cards-2{grid-template-columns:repeat(5,minmax(0,1fr))}
 .card{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;cursor:pointer;text-align:left}
 .card canvas{width:100%;aspect-ratio:611/530;display:block;border-radius:8px;background:var(--bg)}
-.card:hover canvas,.card:focus-visible canvas{outline:2px solid var(--ink);outline-offset:2px}
+.card:hover canvas,.card:focus-visible canvas,.card:hover .upl,.card:focus-visible .upl{outline:2px solid var(--ink);outline-offset:2px}
+.upl{width:100%;aspect-ratio:611/530;border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:14px;color:var(--ink)}
+.upl svg{width:32px;height:32px;display:block}
 .card .cn{font-size:14px;line-height:1.25;font-weight:600}
 .card .cs{font-size:12px;line-height:1.5;color:var(--ink2);margin-top:-4px}
 .linkbox{display:none;margin-top:8px}
@@ -137,6 +139,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
         <div class="group">
           <button class="btn icon" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
           <button class="btn icon" id="redo" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+          <button class="btn tool" id="resetBtn" title="Resetar: volta o desenho, as cores e o rejunte para como a página abre" aria-label="Resetar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span class="tlabel">Resetar</span></button>
         </div>
         <div class="sep"></div>
         <div class="group">
@@ -243,6 +246,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       </div>
     </div>
     <div id="galList"></div>
+    <input type="file" id="imgIn" accept="image/*" class="hidden">
   </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
@@ -264,7 +268,8 @@ const OUT = 255, MAX_COLORS = 12, HEX = '0123456789abcdef';
 const DEFAULT_PALETTE = ['#EFE6D3','#E7B98F','#D07A4A','#A8432A','#5E2A20','#A9C9C8','#DDB04C','#D9A193'];
 const C_BG = '#F3EDE2', C_WALL = '#3E3631', C_BLOCK = '#6F757B', C_HATCH = '#5E646A', C_LABEL = '#5A4D43', C_BLOCK_LABEL = '#FFFFFF';
 
-const S = {grout:2, groutColor:'#E2D7C3', origin:'bancada', palette:DEFAULT_PALETTE.slice(), cells:null, plan:true};
+const DEFAULT_GROUT_COLOR = '#E2D7C3';
+const S = {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:DEFAULT_PALETTE.slice(), cells:null, plan:true};
 let G = null, sel = null, cur = 2, tool = 'pincel', brush = 1, addMode = false, where = 'all';
 const V = {s:1, tx:0, ty:0, fit:1};
 const $ = id => document.getElementById(id);
@@ -595,6 +600,16 @@ $('zin').onclick = ()=>zoomAt(1.5, vp.clientWidth/2, vp.clientHeight/2);
 $('zout').onclick = ()=>zoomAt(1/1.5, vp.clientWidth/2, vp.clientHeight/2);
 $('zfit').onclick = fitView;
 $('undo').onclick = undo; $('redo').onclick = redo;
+// Volta tudo para como a página abre; os desenhos salvos ficam, e Ctrl+Z desfaz
+$('resetBtn').onclick = ()=>{
+  pushUndo();
+  Object.assign(S, {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:DEFAULT_PALETTE.slice(), plan:true});
+  G = buildGrid(S.grout, S.origin); S.cells = new Uint8Array(G.n).fill(OUT); sel = new Uint8Array(G.n);
+  const all = []; for(let k=0;k<G.n;k++) if(G.inside[k]){ S.cells[k] = 0; all.push(k); }
+  paint('tapete', GENS.tapete.vars[0], all);
+  cur = 2; setWhere('all'); setTool('pincel');
+  changed(true); fitView(); toast('Voltou ao início. Ctrl+Z desfaz.');
+};
 $('addBtn').onclick = ()=>{ addMode = !addMode; updTools(); };
 
 document.addEventListener('keydown', e=>{
@@ -1008,8 +1023,86 @@ function generate(style, v, quiet){
 function setWhere(w){ where = w; $('whereAll').setAttribute('aria-pressed', w==='all'); $('whereSel').setAttribute('aria-pressed', w==='sel'); }
 $('whereAll').onclick = ()=>setWhere('all'); $('whereSel').onclick = ()=>setWhere('sel');
 
+/* ---------- Desenho a partir de uma imagem (tudo no navegador; a imagem não sai daqui) ---------- */
+function toLab(r,g,b){
+  const f = v=>{ v/=255; return v<=.04045 ? v/12.92 : Math.pow((v+.055)/1.055,2.4); };
+  const R = f(r), Gg = f(g), B = f(b);
+  const x = (R*.4124+Gg*.3576+B*.1805)/.95047, y = R*.2126+Gg*.7152+B*.0722, z = (R*.0193+Gg*.1192+B*.9505)/1.08883;
+  const h = t=>t>.008856 ? Math.cbrt(t) : 7.787*t+16/116;
+  return [116*h(y)-16, 500*(h(x)-h(y)), 200*(h(y)-h(z))];
+}
+function fromLab([L,a,b]){
+  const fy = (L+16)/116, fx = fy+a/500, fz = fy-b/200, h = t=>t**3>.008856 ? t**3 : (t-16/116)/7.787;
+  const x = h(fx)*.95047, y = h(fy), z = h(fz)*1.08883;
+  const lin = [x*3.2406+y*-1.5372+z*-.4986, x*-.9689+y*1.8758+z*.0415, x*.0557+y*-.204+z*1.057];
+  const g = v=>Math.round(255*Math.min(1,Math.max(0, v<=.0031308 ? 12.92*v : 1.055*Math.pow(v,1/2.4)-.055)));
+  return '#'+lin.map(v=>g(v).toString(16).padStart(2,'0')).join('').toUpperCase();
+}
+const hexLab = h=>{ const n = parseInt(h.slice(1),16); return toLab(n>>16&255, n>>8&255, n&255); };
+const d2 = (p,q)=>(p[0]-q[0])**2+(p[1]-q[1])**2+(p[2]-q[2])**2;
+// Cor média (em Lab) de cada ladrilho, com a imagem cobrindo o chão à vista e cortada no centro
+function sampleImage(img){
+  const X0 = 70, W = ROOM_W-X0, H = ROOM_H, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d'), sc = Math.max(W/img.width, H/img.height);
+  x.imageSmoothingQuality = 'high'; x.drawImage(img, (W-img.width*sc)/2, (H-img.height*sc)/2, img.width*sc, img.height*sc);
+  const d = x.getImageData(0,0,W,H).data, lab = new Array(G.n);
+  for(let k=0;k<G.n;k++){
+    if(!G.inside[k]) continue;
+    const i = k%G.cols, j = (k/G.cols)|0;
+    const ax = Math.max(0, Math.floor(G.x0+i*G.p-X0)), bx = Math.min(W, Math.ceil(G.x0+i*G.p+10-X0));
+    const ay = Math.max(0, Math.floor(G.y0+j*G.p)), by = Math.min(H, Math.ceil(G.y0+j*G.p+10));
+    let r = 0, g = 0, b = 0, n = 0;
+    for(let yy=ay;yy<by;yy++) for(let xx=ax;xx<bx;xx++){ const o = (yy*W+xx)*4; r += d[o]; g += d[o+1]; b += d[o+2]; n++; }
+    lab[k] = n ? toLab(r/n, g/n, b/n) : [100,0,0];
+  }
+  return lab;
+}
+// As k cores que melhor resumem a imagem (k-means, começando pelas cores mais distantes entre si)
+function kcores(lab, k){
+  const pts = lab.filter(Boolean), mean = [0,1,2].map(c=>pts.reduce((s,p)=>s+p[c],0)/pts.length);
+  const cen = [pts.reduce((a,p)=>d2(p,mean)<d2(a,mean)?p:a, pts[0])];
+  while(cen.length<k){ let best = pts[0], bd = -1; for(const p of pts){ const m = Math.min(...cen.map(c=>d2(p,c))); if(m>bd){ bd = m; best = p; } } cen.push(best); }
+  for(let it=0; it<15; it++){
+    const acc = cen.map(()=>[0,0,0,0]);
+    for(const p of pts){ let bi = 0, bd = Infinity; cen.forEach((c,n)=>{ const v = d2(p,c); if(v<bd){ bd = v; bi = n; } }); const a = acc[bi]; a[0]+=p[0]; a[1]+=p[1]; a[2]+=p[2]; a[3]++; }
+    acc.forEach((a,n)=>{ if(a[3]) cen[n] = [a[0]/a[3], a[1]/a[3], a[2]/a[3]]; });
+  }
+  const hex = [...new Set(cen.map(fromLab))];
+  return hex.sort((a,b)=>hexLab(b)[0]-hexLab(a)[0]);
+}
+function nearestCells(lab, pal){
+  const pl = pal.map(hexLab), cells = new Uint8Array(G.n).fill(OUT);
+  for(let k=0;k<G.n;k++){ if(!lab[k]) continue; let bi = 0, bd = Infinity; pl.forEach((c,n)=>{ const v = d2(lab[k],c); if(v<bd){ bd = v; bi = n; } }); cells[k] = bi; }
+  return cells;
+}
+function imageOptions(lab){
+  const p8 = kcores(lab, 8), p4 = kcores(lab, 4);
+  return [
+    {nome:'Cores da imagem', sub:`${p8.length} cores tiradas da imagem. Troca a paleta e vale para o chão todo.`, palette:p8, cells:nearestCells(lab,p8)},
+    {nome:'Simplificado', sub:`Só ${p4.length} cores, para um desenho mais limpo. Troca a paleta.`, palette:p4, cells:nearestCells(lab,p4)},
+    {nome:'Cores atuais', sub:'Usa as cores que já estão na paleta, sem trocar nada.', palette:null, cells:nearestCells(lab,S.palette)},
+  ];
+}
+function drawCellsThumb(cv, cells, palette){
+  const w = cv.clientWidth || 180, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
+  cv.width = Math.round(w*r); cv.height = Math.round(h*r);
+  const keep = {cells:S.cells, palette:S.palette, plan:S.plan};
+  S.cells = cells; S.palette = palette || S.palette; S.plan = false;
+  const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false);
+  Object.assign(S, keep);
+}
+function loadImage(f){
+  if(window.createImageBitmap) return createImageBitmap(f);
+  return new Promise((ok, fail)=>{ const img = new Image(), url = URL.createObjectURL(f); img.onload = ()=>{ URL.revokeObjectURL(url); ok(img); }; img.onerror = fail; img.src = url; });
+}
+$('imgIn').onchange = async e=>{
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  try{ galSt.img = imageOptions(sampleImage(await loadImage(f))); galSt.passo = 'img'; renderGal(); }
+  catch(err){ toast('Essa imagem não abriu. Tente um JPG ou PNG.'); }
+};
+
 /* ---------- Galeria em 3 passos: tipo › desenho › cores ---------- */
-const galSt = {passo:1, tipo:null, des:null};
+const galSt = {passo:1, tipo:null, des:null, img:null};
 function drawThumb(cv, style, v){
   const w = cv.clientWidth || 180, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
   cv.width = Math.round(w*r); cv.height = Math.round(h*r);
@@ -1023,7 +1116,9 @@ function drawThumb(cv, style, v){
 }
 function galItems(){
   const st = galSt;
-  if(st.passo===1) return Object.entries(GENS).map(([k,g])=>({nome:g.label, sub:g.desc, tipo:k, v:g.vars[0]}));
+  if(st.passo===1) return [...Object.entries(GENS).map(([k,g])=>({nome:g.label, sub:g.desc, tipo:k, v:g.vars[0]})),
+    {nome:'Enviar imagem', sub:'Transforma uma imagem sua em ladrilhos. Funciona melhor com padrão ou desenho visto de frente.', upload:true}];
+  if(st.passo==='img') return st.img;
   const g = GENS[st.tipo];
   if(st.passo===2) return g.vars.map(v=>({nome:v.nome, tipo:st.tipo, v}));
   const v = g.vars[st.des];
@@ -1031,26 +1126,42 @@ function galItems(){
 }
 function renderGal(){
   const st = galSt, onSel = where==='sel' && selCount()>0, items = galItems();
-  $('galSteps').innerHTML = ['Tipo','Desenho','Cores'].map((t,n)=>`<span class="${n+1===st.passo?'on':''}">${n+1}. ${t}</span>`).join('<span aria-hidden="true">›</span>');
+  const passos = st.passo==='img' ? ['Tipo','Cores da imagem'] : ['Tipo','Desenho','Cores'], atual = st.passo==='img' ? 2 : st.passo;
+  $('galSteps').innerHTML = passos.map((t,n)=>`<span class="${n+1===atual?'on':''}">${n+1}. ${t}</span>`).join('<span aria-hidden="true">›</span>');
   $('galBack').classList.toggle('hidden', st.passo===1);
   const g = GENS[st.tipo];
-  $('galTitle').textContent = st.passo===1 ? 'Escolha o tipo' : st.passo===2 ? `${g.label}: escolha o desenho` : `${g.label} · ${g.vars[st.des].nome}: escolha as cores`;
+  $('galTitle').textContent = st.passo===1 ? 'Escolha o tipo' : st.passo==='img' ? 'Sua imagem em ladrilhos: escolha as cores' : st.passo===2 ? `${g.label}: escolha o desenho` : `${g.label} · ${g.vars[st.des].nome}: escolha as cores`;
   $('galNote').textContent = st.passo===1 ? 'Depois você escolhe o desenho e as cores.'
+    : st.passo==='img' ? 'Cada ladrilho pega a cor média do pedaço da imagem que cai em cima dele.'
     : st.passo===2 ? `${g.vars.length} desenhos, todos nas cores originais. As cores vêm no próximo passo.`
     : onSel ? 'Clique para aplicar só nos ladrilhos selecionados.' : 'Clique para aplicar no chão.';
-  $('galList').innerHTML = `<div class="cards cards-${st.passo}">${items.map((it,n)=>`<button class="card" data-n="${n}" aria-label="${esc(it.nome)}"><canvas></canvas><span class="cn">${esc(it.nome)}</span>${it.sub?`<span class="cs">${esc(it.sub)}</span>`:''}</button>`).join('')}</div>`;
+  const cardsCls = st.passo==='img' ? 3 : st.passo;
+  $('galList').innerHTML = `<div class="cards cards-${cardsCls}">${items.map((it,n)=>`<button class="card" data-n="${n}" aria-label="${esc(it.nome)}">${it.upload
+      ? `<span class="upl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>Escolher arquivo</span>`
+      : '<canvas></canvas>'}<span class="cn">${esc(it.nome)}</span>${it.sub?`<span class="cs">${esc(it.sub)}</span>`:''}</button>`).join('')}</div>`;
   $('gal').scrollTop = 0;
-  requestAnimationFrame(()=>$('galList').querySelectorAll('.card').forEach(b=>{ const it = items[+b.dataset.n]; drawThumb(b.querySelector('canvas'), it.tipo, it.v); }));
+  requestAnimationFrame(()=>$('galList').querySelectorAll('.card').forEach(b=>{
+    const it = items[+b.dataset.n], cv = b.querySelector('canvas'); if(!cv) return;
+    if(it.cells) drawCellsThumb(cv, it.cells, it.palette); else drawThumb(cv, it.tipo, it.v);
+  }));
 }
 function openGal(){ galSt.passo = 1; $('gal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; renderGal(); $('galClose').focus(); }
 function closeGal(){ $('gal').classList.add('hidden'); document.body.style.overflow = ''; $('galList').innerHTML = ''; }
 $('genBtn').onclick = openGal;
 $('galClose').onclick = closeGal;
-$('galBack').onclick = ()=>{ galSt.passo = Math.max(1, galSt.passo-1); renderGal(); };
+$('galBack').onclick = ()=>{ galSt.passo = galSt.passo==='img' ? 1 : Math.max(1, galSt.passo-1); renderGal(); };
 $('gal').onclick = e=>{
   if(e.target===$('gal')){ closeGal(); return; }
   const b = e.target.closest('.card'); if(!b) return;
   const n = +b.dataset.n, st = galSt;
+  if(st.passo===1 && n>=Object.keys(GENS).length){ $('imgIn').click(); return; }
+  if(st.passo==='img'){
+    const op = st.img[n];
+    pushUndo();
+    if(op.palette){ S.palette = op.palette.slice(); S.cells = op.cells.slice(); cur = 0; changed(true); }
+    else { for(const k of targets()) S.cells[k] = op.cells[k]; changed(); }
+    closeGal(); toast(`Imagem aplicada com “${op.nome}”. Ctrl+Z desfaz.`); return;
+  }
   if(st.passo===1){ st.tipo = Object.keys(GENS)[n]; st.passo = 2; renderGal(); return; }
   if(st.passo===2){ st.des = n; st.passo = 3; renderGal(); return; }
   const g = GENS[st.tipo], v = g.vars[st.des], e2 = ESQUEMAS[n];
