@@ -728,13 +728,27 @@ const GENS = {
       return cyc[s];
     };
   }},
-  tapete:{label:'Tapete', desc:'Um tapete de ladrilhos no meio, com salpicado em volta.', fn(c){
-    const R = c.R, rr = 5+c.scale*1.6, bw = 1+Math.floor(c.scale/4);
-    const cyc = [R.dark[0], R.light, R.dark[1]??R.mid[0], R.mid[0], R.dark[R.dark.length-1], R.light];
+  tapete:{label:'Tapete', desc:'Um tapete simétrico no meio da sala: faixas de borda, losango em degraus no centro e chão liso em volta.', fn(c){
+    const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
+    const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
+    const {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
+    const maxD = Math.min(R-L, B-T)/2-8, D = Math.max(2, Math.min(maxD, 2+c.scale));
+    const sp = c.inten<.34 ? 6 : c.inten<.67 ? 4 : 2;
+    const rings = [CH, FE, TE, PE, CR, MO, MO, CR, TE, FE, CH];
     return (k,i,j)=>{
-      const ring = Math.max(Math.abs(i-c.ci)*.8, Math.abs(j-c.cj));
-      if(ring<=rr){ let s = Math.floor((rr-ring)/bw)%cyc.length; if(c.rand()<c.inten*.25) s = (s+1)%cyc.length; return cyc[s]; }
-      return c.rand()<.05+c.inten*.3 ? any(c.rand,R.rest) : R.light;
+      if(i<L || i>R || j<T || j>B) return CR;
+      const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
+      const e = Math.min(i-L, R-i, j-T, B-j);
+      const t = (e===i-L || e===R-i) ? dy : dx;
+      if(e===0) return t%3===0 ? CH : TE;
+      if(e===1 || e===7) return CR;
+      if(e===2) return FE;
+      if(e<=5){ const m = t%4, tri = Math.min(m, 4-m); return e-3<tri ? PE : CR; }
+      if(e===6) return TE;
+      const d = dx+dy;
+      if(d<=D) return rings[(D-d)%rings.length];
+      if(dx%sp===0 && dy%sp===0) return ((dx+dy)/sp)%2 ? RO : AZ;
+      return CR;
     };
   }},
 };
@@ -753,18 +767,35 @@ function distTo(tg){
   }
   return d;
 }
+// Retângulo do tapete: no chão todo, a área livre entre a bancada e a parede do banheiro;
+// na seleção, o retângulo que a contém. Sempre com número ímpar de ladrilhos, para ter centro.
+const RUG_AREA = [70,60,466,490], RUG_MARGIN = 3;
+function rugBox(tg){
+  let b;
+  if(tg.length===G.total){
+    b = {i0:Math.ceil((RUG_AREA[0]-G.x0)/G.p)+RUG_MARGIN, i1:Math.floor((RUG_AREA[2]-10-G.x0)/G.p)-RUG_MARGIN,
+         j0:Math.ceil((RUG_AREA[1]-G.y0)/G.p)+RUG_MARGIN, j1:Math.floor((RUG_AREA[3]-10-G.y0)/G.p)-RUG_MARGIN};
+  } else {
+    b = {i0:1e9, i1:-1, j0:1e9, j1:-1};
+    for(const k of tg){ const i = k%G.cols, j = (k/G.cols)|0; b.i0 = Math.min(b.i0,i); b.i1 = Math.max(b.i1,i); b.j0 = Math.min(b.j0,j); b.j1 = Math.max(b.j1,j); }
+  }
+  if((b.i1-b.i0)%2) b.i1--;
+  if((b.j1-b.j0)%2) b.j1--;
+  return b;
+}
 function generate(style, seed, scale, inten, quiet){
   const tg = targets(); if(!tg.length) return;
   if(!quiet) pushUndo();
   let si = 0, sj = 0; for(const k of tg){ si += k%G.cols; sj += (k/G.cols)|0; }
   const c = {rand:rng(seed), R:roles(), scale, inten:inten/100, ci:si/tg.length, cj:sj/tg.length};
   if(style==='moldura'||style==='foto') c.dist = distTo(tg);
+  if(style==='tapete') c.box = rugBox(tg);
   const f = GENS[style].fn(c);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
   changed();
 }
 function setWhere(w){ where = w; $('whereAll').setAttribute('aria-pressed', w==='all'); $('whereSel').setAttribute('aria-pressed', w==='sel'); }
-let genStyle = 'foto';
+let genStyle = 'tapete';
 $('genStyle').innerHTML = Object.entries(GENS).map(([k,g])=>`<button class="btn small" data-g="${k}" aria-pressed="false">${g.label}</button>`).join('');
 function updGen(){
   document.querySelectorAll('[data-g]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.g===genStyle));
@@ -798,7 +829,7 @@ $('groutColor').addEventListener('change', ()=>{ gEdit = false; });
 $('plan').onchange = e=>{ S.plan = e.target.checked; render(); save(); };
 
 /* ---------- Guardar, abrir, exportar ---------- */
-const KEY_CUR = 'ladrilhos-sala:atual', KEY_LIST = 'ladrilhos-sala:desenhos';
+const KEY_CUR = 'ladrilhos-sala:atual-2', KEY_LIST = 'ladrilhos-sala:desenhos';
 function store(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function toObj(){
@@ -935,7 +966,7 @@ async function boot(){
     }catch(e){ setTimeout(()=>toast('O link não abriu. Mostrando o último desenho.'), 300); }
   }
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
-  if(!loaded){ regrid(null,null); generate('foto', 20261026, 5, 45, true); }
+  if(!loaded){ regrid(null,null); generate('tapete', 1, 5, 45, true); }
   syncControls(); updSel(); updPalette(); updTools(); updUndo(); renderSaved();
   new ResizeObserver(resize).observe(vp); resize();
 }
