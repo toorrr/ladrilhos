@@ -225,17 +225,17 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 /* ---------- Planta (cm). Origem: canto interno de cima à esquerda ---------- */
 const ROOM_W = 571, ROOM_H = 490, WALL = 15;
 // Chão à vista: sala menos escada, bancada e o canto do banheiro (25,25 m² na planta)
-const FLOOR = [[105,0,466,91],[70,91,466,259],[70,259,571,490]];
+const FLOOR = [[105,0,466,60],[70,60,466,259],[70,259,571,490]];
 const BLOCKS = [
-  {label:'Escada', rects:[[0,0,105,91],[0,91,70,178]]},
-  {label:'Bancada', rects:[[0,178,70,490]]},
+  {label:'Escada', rects:[[0,0,105,60],[0,60,70,180]]},
+  {label:'Bancada', rects:[[0,180,70,490]]},
   {label:'Banheiro', rects:[[466,0,571,259]]},
 ];
-const DOOR = [88,488];
+const DOOR = [86,490];
 const FLOOR_AREA = FLOOR.reduce((a,r)=>a+(r[2]-r[0])*(r[3]-r[1]),0);
 const OUT = 255, MAX_COLORS = 12, HEX = '0123456789abcdef';
 const DEFAULT_PALETTE = ['#EFE6D3','#E7B98F','#D07A4A','#A8432A','#5E2A20','#A9C9C8','#DDB04C','#D9A193'];
-const C_BG = '#F3EDE2', C_WALL = '#8C7D6E', C_BLOCK = '#E6DCCB', C_HATCH = '#C9BBA6', C_LABEL = '#5A4D43';
+const C_BG = '#F3EDE2', C_WALL = '#3E3631', C_BLOCK = '#6F757B', C_HATCH = '#5E646A', C_LABEL = '#5A4D43', C_BLOCK_LABEL = '#FFFFFF';
 
 const S = {grout:2, groutColor:'#E2D7C3', origin:'bancada', palette:DEFAULT_PALETTE.slice(), cells:null, plan:true};
 let G = null, sel = null, cur = 2, tool = 'pincel', brush = 1, addMode = false, where = 'all';
@@ -370,7 +370,7 @@ function drawOverlay(c, s){
 function drawLabels(c, s, tx, ty, ratio, fs){
   c.setTransform(ratio,0,0,ratio,0,0);
   c.font = `600 ${fs}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
-  c.fillStyle = C_LABEL; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = C_BLOCK_LABEL; c.textAlign = 'center'; c.textBaseline = 'middle';
   for(const b of BLOCKS){
     const r = b.rects[0];
     const cx = ((r[0]+r[2])/2)*s+tx, cy = ((r[1]+r[3])/2)*s+ty;
@@ -379,6 +379,7 @@ function drawLabels(c, s, tx, ty, ratio, fs){
     if(tw+8>w) c.rotate(-Math.PI/2);
     c.fillText(b.label,0,0); c.restore();
   }
+  c.fillStyle = C_LABEL;
   c.fillText('Porta de correr', ((DOOR[0]+DOOR[1])/2)*s+tx, (ROOM_H+WALL)*s+ty+fs+2);
 }
 let need = false;
@@ -674,6 +675,23 @@ function pickW(r, pairs){
 }
 const any = (r,arr)=>arr[Math.floor(r()*arr.length)];
 const GENS = {
+  foto:{label:'Como nas fotos', desc:'O padrão das fotos de referência: moldura junto às paredes, campo claro salpicado e um losango quente em degraus no meio.', fn(c){
+    const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
+    const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
+    const N = noise(c.rand), R = 6+c.scale*1.2;
+    const field = (i,j)=>pickW(c.rand,[[CR,.95-c.inten*.6],[AZ,N(i/6,j/6)>.6?.22:.07],[PE,.08],[TE,.06],[MO,.04],[RO,.05],[FE,.02],[CH,.01]]);
+    return (k,i,j)=>{
+      const d = c.dist[k];
+      if(d===3) return (i+j)%3===0 ? CH : TE;
+      if(d<5) return field(i,j);
+      const dd = Math.abs(i-c.ci)/1.4+Math.abs(j-c.cj)+(c.rand()-.5)*.8;
+      if(dd>R) return field(i,j);
+      if(dd>R-3) return pickW(c.rand,[[FE,.4],[TE,.35],[CH,.1],[PE,.15]]);
+      if(dd>R-7) return pickW(c.rand,[[PE,.35],[TE,.25],[MO,.15],[CR,.15],[RO,.1]]);
+      if(dd>R-9) return pickW(c.rand,[[FE,.5],[TE,.3],[CH,.2]]);
+      return pickW(c.rand,[[PE,.35],[MO,.25],[CR,.25],[TE,.15]]);
+    };
+  }},
   manchas:{label:'Manchas', desc:'Campos de cor com a borda em degrau, como nas fotos de referência.', fn(c){
     const N = noise(c.rand), sc = 2.5+c.scale*1.4, thr = .74-c.inten*.24, R = c.R;
     return (k,i,j)=>{
@@ -740,13 +758,13 @@ function generate(style, seed, scale, inten, quiet){
   if(!quiet) pushUndo();
   let si = 0, sj = 0; for(const k of tg){ si += k%G.cols; sj += (k/G.cols)|0; }
   const c = {rand:rng(seed), R:roles(), scale, inten:inten/100, ci:si/tg.length, cj:sj/tg.length};
-  if(style==='moldura') c.dist = distTo(tg);
+  if(style==='moldura'||style==='foto') c.dist = distTo(tg);
   const f = GENS[style].fn(c);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
   changed();
 }
 function setWhere(w){ where = w; $('whereAll').setAttribute('aria-pressed', w==='all'); $('whereSel').setAttribute('aria-pressed', w==='sel'); }
-let genStyle = 'manchas';
+let genStyle = 'foto';
 $('genStyle').innerHTML = Object.entries(GENS).map(([k,g])=>`<button class="btn small" data-g="${k}" aria-pressed="false">${g.label}</button>`).join('');
 function updGen(){
   document.querySelectorAll('[data-g]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.g===genStyle));
@@ -917,7 +935,7 @@ async function boot(){
     }catch(e){ setTimeout(()=>toast('O link não abriu. Mostrando o último desenho.'), 300); }
   }
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
-  if(!loaded){ regrid(null,null); generate('manchas', 20261026, 5, 45, true); }
+  if(!loaded){ regrid(null,null); generate('foto', 20261026, 5, 45, true); }
   syncControls(); updSel(); updPalette(); updTools(); updUndo(); renderSaved();
   new ResizeObserver(resize).observe(vp); resize();
 }
