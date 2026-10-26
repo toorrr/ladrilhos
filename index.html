@@ -728,27 +728,53 @@ const GENS = {
       return cyc[s];
     };
   }},
-  tapete:{label:'Tapete', desc:'Um tapete simétrico no meio da sala: faixas de borda, losango em degraus no centro e chão liso em volta.', fn(c){
+  tapete:{label:'Tapete', desc:'Tapete simétrico como nas fotos: faixa com cruzes, xadrez de duas cores, losango em degraus e, em volta, fundo azul com motivos em grade.', fn(c){
     const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
     const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
     const {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
-    const maxD = Math.min(R-L, B-T)/2-8, D = Math.max(2, Math.min(maxD, 2+c.scale));
-    const sp = c.inten<.34 ? 6 : c.inten<.67 ? 4 : 2;
-    const rings = [CH, FE, TE, PE, CR, MO, MO, CR, TE, FE, CH];
+    const BW = 7, maxD = Math.min(R-L, B-T)/2-BW-1, D = Math.max(3, Math.min(maxD, 2+c.scale));
+    const sp = c.inten<.34 ? 8 : c.inten<.67 ? 6 : 4, h = sp/2;
+    const near = (a,m)=>Math.min(a%m, m-a%m);
+    // motivo de raio r centrado em (i,j): todo ele no chão, a 2 ladrilhos da moldura e do tapete
+    const fits = (i,j,r)=>{
+      for(let y=j-r;y<=j+r;y++) for(let x=i-r;x<=i+r;x++){
+        if(x<0||y<0||x>=G.cols||y>=G.rows) return false;
+        const q = y*G.cols+x; if(!G.inside[q] || c.dist[q]<5) return false;
+        if(x>=L-2 && x<=R+2 && y>=T-2 && y<=B+2) return false;
+      }
+      return true;
+    };
     return (k,i,j)=>{
-      if(i<L || i>R || j<T || j>B) return CR;
       const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
+      if(i<L || i>R || j<T || j>B){
+        // moldura junto às paredes, acompanhando o contorno do chão
+        const w = c.dist[k];
+        if(w===0) return TE;
+        if(w===1) return CR;
+        if(w===2) return FE;
+        // fundo: azul com cruzes ferrugem numa grade e um ponto branco no meio de cada quatro cruzes;
+        // só entra o motivo que cabe inteiro, com folga da moldura e do tapete
+        const a = near(dx,sp), b = near(dy,sp);
+        if((a===0 && b<=1) || (b===0 && a<=1)){
+          const ci = i>=cx ? cx+Math.round(dx/sp)*sp : cx-Math.round(dx/sp)*sp;
+          const cj = j>=cy ? cy+Math.round(dy/sp)*sp : cy-Math.round(dy/sp)*sp;
+          if(fits(ci,cj,1)) return FE;
+        }
+        if(near(dx+h,sp)===0 && near(dy+h,sp)===0 && fits(i,j,0)) return CR;
+        return AZ;
+      }
       const e = Math.min(i-L, R-i, j-T, B-j);
       const t = (e===i-L || e===R-i) ? dy : dx;
-      if(e===0) return t%3===0 ? CH : TE;
-      if(e===1 || e===7) return CR;
-      if(e===2) return FE;
-      if(e<=5){ const m = t%4, tri = Math.min(m, 4-m); return e-3<tri ? PE : CR; }
-      if(e===6) return TE;
+      if(e===0 || e===6) return MO;
+      if(e===1 || e===5) return FE;
+      if(e<=4){ const m = near(t,4); return (e===3 && m<=1) || (m===0) ? FE : PE; }
       const d = dx+dy;
-      if(d<=D) return rings[(D-d)%rings.length];
-      if(dx%sp===0 && dy%sp===0) return ((dx+dy)/sp)%2 ? RO : AZ;
-      return CR;
+      if(d===D) return MO;
+      if(d===D+1) return CR;
+      if(d>D) return (dx+dy)%2 ? TE : FE;
+      if(d<=1) return FE;
+      if(d===2) return MO;
+      return (dx%2===0 && dy%2===0 && (dx+dy)%4===0) ? CR : AZ;
     };
   }},
 };
@@ -769,7 +795,7 @@ function distTo(tg){
 }
 // Retângulo do tapete: no chão todo, a área livre entre a bancada e a parede do banheiro;
 // na seleção, o retângulo que a contém. Sempre com número ímpar de ladrilhos, para ter centro.
-const RUG_AREA = [70,60,466,490], RUG_MARGIN = 3;
+const RUG_AREA = [70,60,466,490], RUG_MARGIN = 5;
 function rugBox(tg){
   let b;
   if(tg.length===G.total){
@@ -789,7 +815,7 @@ function generate(style, seed, scale, inten, quiet){
   let si = 0, sj = 0; for(const k of tg){ si += k%G.cols; sj += (k/G.cols)|0; }
   const c = {rand:rng(seed), R:roles(), scale, inten:inten/100, ci:si/tg.length, cj:sj/tg.length};
   if(style==='moldura'||style==='foto') c.dist = distTo(tg);
-  if(style==='tapete') c.box = rugBox(tg);
+  if(style==='tapete'){ c.box = rugBox(tg); c.dist = distTo(tg); }
   const f = GENS[style].fn(c);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
   changed();
@@ -829,7 +855,7 @@ $('groutColor').addEventListener('change', ()=>{ gEdit = false; });
 $('plan').onchange = e=>{ S.plan = e.target.checked; render(); save(); };
 
 /* ---------- Guardar, abrir, exportar ---------- */
-const KEY_CUR = 'ladrilhos-sala:atual-2', KEY_LIST = 'ladrilhos-sala:desenhos';
+const KEY_CUR = 'ladrilhos-sala:atual-3', KEY_LIST = 'ladrilhos-sala:desenhos';
 function store(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function toObj(){
