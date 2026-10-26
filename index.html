@@ -656,86 +656,30 @@ $('selPaint').onclick = ()=>{ pushUndo(); for(let k=0;k<G.n;k++) if(sel[k]) S.ce
 
 /* ---------- Gerador ---------- */
 function rng(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
-function noise(rand){
-  const t = new Float32Array(65536); for(let i=0;i<t.length;i++) t[i] = rand();
-  const at = (x,y)=>t[((y&255)<<8)|(x&255)], sm = v=>v*v*(3-2*v);
-  const n1 = (x,y)=>{ const xi = Math.floor(x), yi = Math.floor(y), xf = sm(x-xi), yf = sm(y-yi);
-    const a = at(xi,yi), b = at(xi+1,yi), c = at(xi,yi+1), d = at(xi+1,yi+1);
-    return a+(b-a)*xf+(c-a)*yf+(a-b-c+d)*xf*yf; };
-  return (x,y)=>.65*n1(x,y)+.35*n1(x*2+31.7,y*2+17.3);
-}
 function roles(){
   const o = S.palette.map((_,i)=>i).sort((a,b)=>lum(S.palette[b])-lum(S.palette[a]));
   const nd = o.length>=6 ? 3 : Math.max(1, Math.floor(o.length/2));
   const dark = o.slice(-nd), mid = o.slice(1, o.length-nd);
   return {o, light:o[0], rest:o.slice(1), dark, mid:mid.length?mid:dark};
 }
-function pickW(r, pairs){
-  const v = pairs.filter(p=>p[0]!==undefined); let s = 0; for(const p of v) s += p[1];
-  let x = r()*s; for(const p of v){ x -= p[1]; if(x<=0) return p[0]; } return v[v.length-1][0];
-}
 const any = (r,arr)=>arr[Math.floor(r()*arr.length)];
+// Cores pelo papel que têm nas fotos; se a paleta tiver menos cores, usa as que existem
+function cores(c){
+  const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
+  const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
+  return {CR,PE,TE,FE,CH,AZ,MO,RO};
+}
+// Moldura das paredes, igual à do Tapete: terracota, creme, ferrugem; cortes ficam creme. -1 fora dela.
+function molduraParede(c,k,C){ const w = c.dist[k]; return w<0 ? C.CR : w===0 ? C.TE : w===1 ? C.CR : w===2 ? C.FE : -1; }
+function centro(c){ return {cx:(c.box.i0+c.box.i1)/2, cy:(c.box.j0+c.box.j1)/2}; }
+const near = (a,m)=>Math.min(a%m, m-a%m);
 const GENS = {
-  foto:{label:'Como nas fotos', desc:'O padrão das fotos de referência: moldura junto às paredes, campo claro salpicado e um losango quente em degraus no meio.', fn(c){
-    const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
-    const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
-    const N = noise(c.rand), R = 6+c.scale*1.2;
-    const field = (i,j)=>pickW(c.rand,[[CR,.95-c.inten*.6],[AZ,N(i/6,j/6)>.6?.22:.07],[PE,.08],[TE,.06],[MO,.04],[RO,.05],[FE,.02],[CH,.01]]);
-    return (k,i,j)=>{
-      const d = c.dist[k];
-      if(d===3) return (i+j)%3===0 ? CH : TE;
-      if(d<5) return field(i,j);
-      const dd = Math.abs(i-c.ci)/1.4+Math.abs(j-c.cj)+(c.rand()-.5)*.8;
-      if(dd>R) return field(i,j);
-      if(dd>R-3) return pickW(c.rand,[[FE,.4],[TE,.35],[CH,.1],[PE,.15]]);
-      if(dd>R-7) return pickW(c.rand,[[PE,.35],[TE,.25],[MO,.15],[CR,.15],[RO,.1]]);
-      if(dd>R-9) return pickW(c.rand,[[FE,.5],[TE,.3],[CH,.2]]);
-      return pickW(c.rand,[[PE,.35],[MO,.25],[CR,.25],[TE,.15]]);
-    };
-  }},
-  manchas:{label:'Manchas', desc:'Campos de cor com a borda em degrau, como nas fotos de referência.', fn(c){
-    const N = noise(c.rand), sc = 2.5+c.scale*1.4, thr = .74-c.inten*.24, R = c.R;
-    return (k,i,j)=>{
-      const v = N(i/sc,j/sc)+(c.rand()-.5)*.1;
-      if(v>thr) return pickW(c.rand,[[R.dark[1]??R.dark[0],.4],[R.dark[0],.3],[R.dark[2],.12],[any(c.rand,R.mid),.12],[R.light,.06]]);
-      if(v>thr-.07) return pickW(c.rand,[[R.dark[0],.3],[any(c.rand,R.mid),.35],[R.light,.35]]);
-      return c.rand()<.18+c.inten*.25 ? any(c.rand,R.rest) : R.light;
-    };
-  }},
-  salpicado:{label:'Salpicado', desc:'Base clara com pontos soltos de todas as cores.', fn(c){
-    const pa = .06+c.inten*.6, R = c.R, cl = Math.max(0,(c.scale-1)/9)*.6;
-    let prev = R.light;
-    return ()=>{ if(c.rand()<cl && prev!==R.light) return prev; prev = c.rand()<pa ? any(c.rand,R.rest) : R.light; return prev; };
-  }},
-  moldura:{label:'Moldura', desc:'Faixa de cor acompanhando as paredes, com salpicado no meio.', fn(c){
-    const R = c.R, bw = 1+Math.floor(c.scale/3), pa = .06+c.inten*.5;
-    return (k,i,j)=>{
-      const d = c.dist[k];
-      if(d===0) return R.light;
-      if(d===1) return (i+j)%3===0 ? R.dark[R.dark.length-1] : R.dark[0];
-      if(d>1 && d<=bw) return R.dark[1]??R.dark[0];
-      if(d===bw+1) return R.light;
-      if(d===bw+2) return (i+j)%2 ? any(c.rand,R.mid) : R.light;
-      return c.rand()<pa ? any(c.rand,R.rest) : R.light;
-    };
-  }},
-  degraus:{label:'Degraus', desc:'Faixas em zigue-zague atravessando a sala.', fn(c){
-    const R = c.R, per = 3+c.scale, w = 2+Math.floor(c.scale/2);
-    const cyc = [R.light, R.mid[0], R.dark[0], R.dark[1]??R.dark[0], R.dark[0], R.mid[1]??R.mid[0]];
-    return (k,i,j)=>{
-      const m = ((j%(2*per))+2*per)%(2*per), f = i+Math.abs(m-per);
-      let s = Math.floor(f/w)%cyc.length;
-      if(c.rand()<c.inten*.35) s = (s+(c.rand()<.5?1:cyc.length-1))%cyc.length;
-      return cyc[s];
-    };
-  }},
   tapete:{label:'Tapete', desc:'Tapete simétrico como nas fotos: faixa com cruzes, xadrez de duas cores, losango em degraus e, em volta, fundo azul com motivos em grade.', fn(c){
     const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
     const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
     const {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
     const BW = 7, maxD = Math.min(R-L, B-T)/2-BW-1, D = Math.max(3, Math.min(maxD, 2+c.scale));
     const sp = c.inten<.34 ? 8 : c.inten<.67 ? 6 : 4, h = sp/2;
-    const near = (a,m)=>Math.min(a%m, m-a%m);
     // motivo de raio r centrado em (i,j): todo ele no chão, a 2 ladrilhos da moldura e do tapete
     const fits = (i,j,r)=>{
       for(let y=j-r;y<=j+r;y++) for(let x=i-r;x<=i+r;x++){
@@ -779,6 +723,79 @@ const GENS = {
       return (dx%2===0 && dy%2===0 && (dx+dy)%4===0) ? CR : AZ;
     };
   }},
+  moldura:{label:'Moldura', desc:'Faixa de cor acompanhando as paredes, com salpicado no meio.', fn(c){
+    const R = c.R, bw = 1+Math.floor(c.scale/3), pa = .06+c.inten*.5;
+    return (k,i,j)=>{
+      const d = c.dist[k];
+      if(d===0) return R.light;
+      if(d===1) return (i+j)%3===0 ? R.dark[R.dark.length-1] : R.dark[0];
+      if(d>1 && d<=bw) return R.dark[1]??R.dark[0];
+      if(d===bw+1) return R.light;
+      if(d===bw+2) return (i+j)%2 ? any(c.rand,R.mid) : R.light;
+      return c.rand()<pa ? any(c.rand,R.rest) : R.light;
+    };
+  }},
+  losango:{label:'Losango', desc:'Losangos em degraus, um dentro do outro, alternando xadrez e azul com pontos, com contorno amarelo.', fn(c){
+    const C = cores(c), {cx, cy} = centro(c), step = 4+Math.round(c.scale/2), sp = c.inten<.5 ? 4 : 2;
+    return (k,i,j)=>{
+      const f = molduraParede(c,k,C); if(f>=0) return f;
+      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), d = dx+dy, r = d%step;
+      if(r===0) return C.MO;
+      if(Math.floor(d/step)%2===0) return d%2 ? C.TE : C.FE;
+      return (dx%2===0 && dy%2===0 && near(d,sp)===0) ? C.CR : C.AZ;
+    };
+  }},
+  trelica:{label:'Treliça', desc:'Fundo azul com cruzes e pontos numa grade regular, como na foto das frutas.', fn(c){
+    const C = cores(c), {cx, cy} = centro(c), sp = 4+2*Math.floor(c.scale/3), h = sp/2;
+    const ponto = c.inten<.34 ? -1 : c.inten<.67 ? C.CR : C.MO;
+    // motivo de raio r centrado em (i,j): todo no chão e com uma fileira azul antes da moldura
+    const cabe = (i,j,r)=>{
+      for(let y=j-r;y<=j+r;y++) for(let x=i-r;x<=i+r;x++){
+        if(x<0||y<0||x>=G.cols||y>=G.rows) return false;
+        const q = y*G.cols+x; if(!G.inside[q] || c.dist[q]<4) return false;
+      }
+      return true;
+    };
+    return (k,i,j)=>{
+      const f = molduraParede(c,k,C); if(f>=0) return f;
+      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), a = near(dx,sp), b = near(dy,sp);
+      if((a===0 && b<=1) || (b===0 && a<=1)){
+        const ci = i>=cx ? cx+Math.round(dx/sp)*sp : cx-Math.round(dx/sp)*sp;
+        const cj = j>=cy ? cy+Math.round(dy/sp)*sp : cy-Math.round(dy/sp)*sp;
+        if(cabe(ci,cj,1)) return C.FE;
+      }
+      if(ponto>=0 && near(dx+h,sp)===0 && near(dy+h,sp)===0 && cabe(i,j,0)) return ponto;
+      return C.AZ;
+    };
+  }},
+  faixas:{label:'Faixas', desc:'Faixas paralelas à porta, alternando xadrez e azul com pontos, separadas por linhas amarelas e espelhadas a partir do meio.', fn(c){
+    const C = cores(c), {cx, cy} = centro(c), U = 4+c.scale, hU = Math.floor(U/2), mid = Math.floor((U+1)/2);
+    const azul = (dx,row)=>{
+      if(row===0 && near(dx,4)===0) return C.CR;
+      if(c.inten>=.5 && Math.abs(row)===2 && near(dx+2,4)===0) return C.PE;
+      return C.AZ;
+    };
+    return (k,i,j)=>{
+      const f = molduraParede(c,k,C); if(f>=0) return f;
+      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), q = dy-hU-1;
+      if(q<0) return azul(dx, dy);
+      const r = q%(U+1), band = 1+Math.floor(q/(U+1));
+      if(r===0) return C.MO;
+      if(band%2) return (dx+dy)%2 ? C.TE : C.FE;
+      return azul(dx, r-mid);
+    };
+  }},
+  degraus:{label:'Degraus', desc:'Divisas em V que descem em degraus, com linha amarela entre as faixas, espelhadas no eixo do meio.', fn(c){
+    const C = cores(c), {cx, cy} = centro(c), w = 3+Math.floor(c.scale/2);
+    return (k,i,j)=>{
+      const f = molduraParede(c,k,C); if(f>=0) return f;
+      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), t = (j-cy)-dx+1000*(w+1);
+      const r = t%(w+1), s = Math.floor(t/(w+1));
+      if(r===0) return C.MO;
+      if(s%2===0) return (dx+dy)%2 ? C.TE : C.FE;
+      return c.inten>=.5 ? (dx%2===0 && r===Math.ceil(w/2) ? C.CR : C.AZ) : C.PE;
+    };
+  }},
 };
 function targets(){ const t = []; const useSel = where==='sel' && selCount()>0; for(let k=0;k<G.n;k++) if(G.inside[k] && (!useSel || sel[k])) t.push(k); return t; }
 function distTo(tg){
@@ -816,9 +833,9 @@ function generate(style, seed, scale, inten, quiet){
   if(!quiet) pushUndo();
   let si = 0, sj = 0; for(const k of tg){ si += k%G.cols; sj += (k/G.cols)|0; }
   const c = {rand:rng(seed), R:roles(), scale, inten:inten/100, ci:si/tg.length, cj:sj/tg.length};
-  if(style==='moldura'||style==='foto') c.dist = distTo(tg);
-  // a moldura do tapete conta só ladrilhos inteiros, para ter a mesma grossura em todas as paredes
-  if(style==='tapete'){ c.box = rugBox(tg); c.dist = distTo(tg.filter(k=>G.area[k]>=99.5)); }
+  // a moldura das paredes conta só ladrilhos inteiros, para ter a mesma grossura em todos os lados
+  if(style==='moldura') c.dist = distTo(tg);
+  else { c.box = rugBox(tg); c.dist = distTo(tg.filter(k=>G.area[k]>=99.5)); }
   const f = GENS[style].fn(c);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
   changed();
