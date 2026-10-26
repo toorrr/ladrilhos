@@ -88,14 +88,18 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .galhead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:8px}
 .galhead h2{font-size:24px;line-height:1.25;margin:0 0 4px}
 .galhead .note{font-size:14px;color:var(--ink2);margin:0}
-.galsty{padding:24px 0 0}
-.galsty h3{font-size:16px;line-height:1.25;margin:0 0 4px}
-.galsty p{font-size:14px;color:var(--ink2);margin:0 0 12px}
-.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.galacts{display:flex;gap:8px;align-items:center}
+.steps{display:flex;gap:8px;font-size:12px;line-height:1.5;color:var(--ink2);margin-bottom:8px}
+.steps .on{color:var(--ink);font-weight:600}
+#galList{padding-top:16px}
+.cards{display:grid;gap:16px}
+.cards-1,.cards-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cards-2{grid-template-columns:repeat(5,minmax(0,1fr))}
 .card{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;cursor:pointer;text-align:left}
 .card canvas{width:100%;aspect-ratio:611/530;display:block;border-radius:8px;background:var(--bg)}
 .card:hover canvas,.card:focus-visible canvas{outline:2px solid var(--ink);outline-offset:2px}
-.card span{font-size:14px;line-height:1.25}
+.card .cn{font-size:14px;line-height:1.25;font-weight:600}
+.card .cs{font-size:12px;line-height:1.5;color:var(--ink2);margin-top:-4px}
 .linkbox{display:none;margin-top:8px}
 .linkbox.show{display:block}
 .hidden{display:none !important}
@@ -110,7 +114,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   .tlabel{display:none}
   .gal{padding:0}
   .galbox{border-radius:0;padding:16px;min-height:100%}
-  .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .cards-1,.cards-2,.cards-3{grid-template-columns:repeat(2,minmax(0,1fr))}
   .btn.tool{width:40px;padding:0}
 }
 </style>
@@ -171,7 +175,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
     <section class="sec">
       <h2>Gerar desenho</h2>
-      <p class="note">6 estilos com 5 variações cada. Escolha um e ele vai para o chão. Dá para desfazer.</p>
+      <p class="note">Escolha o tipo, depois o desenho e as cores. Dá para desfazer.</p>
       <div class="stack">
         <div class="seg" role="group" aria-label="Onde aplicar">
           <button class="btn small" id="whereAll" aria-pressed="true">Chão todo</button>
@@ -229,10 +233,14 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   <div class="galbox">
     <div class="galhead">
       <div>
+        <div class="steps" id="galSteps"></div>
         <h2 id="galTitle">Escolher desenho</h2>
         <p class="note" id="galNote"></p>
       </div>
-      <button class="btn icon" id="galClose" title="Fechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <div class="galacts">
+        <button class="btn small hidden" id="galBack">Voltar</button>
+        <button class="btn icon" id="galClose" title="Fechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
     </div>
     <div id="galList"></div>
   </div>
@@ -680,7 +688,8 @@ function roles(){
   const dark = o.slice(-nd), mid = o.slice(1, o.length-nd);
   return {o, light:o[0], rest:o.slice(1), dark, mid:mid.length?mid:dark};
 }
-// Cores pelo papel que têm nas fotos; se a paleta tiver menos cores, usa as que existem
+// Cores pelo papel que têm nas fotos; se a paleta tiver menos cores, usa as que existem.
+// O esquema de cores troca um papel por outro (ex.: onde era azul, vira pêssego).
 function cores(c){
   const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
   const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
@@ -688,143 +697,269 @@ function cores(c){
   for(const [papel, outro] of Object.entries(c.remap||{})) C[papel] = base[outro];
   return C;
 }
-// As 5 variações de cada estilo; as colunas são as mesmas em todos, para comparar
-const VARS = [
-  {nome:'Original', scale:5, inten:45},
-  {nome:'Miúdo', scale:2, inten:80},
-  {nome:'Graúdo', scale:9, inten:20},
-  {nome:'Terra', scale:5, inten:45, remap:{AZ:'PE', MO:'CH'}},
-  {nome:'Rosa', scale:7, inten:70, remap:{FE:'CH', TE:'RO', AZ:'CR', MO:'TE'}},
-];
-// Moldura das paredes, igual à do Tapete: terracota, creme, ferrugem; cortes ficam creme. -1 fora dela.
-function molduraParede(c,k,C){ const w = c.dist[k]; return w<0 ? C.CR : w===0 ? C.TE : w===1 ? C.CR : w===2 ? C.FE : -1; }
 function centro(c){ return {cx:(c.box.i0+c.box.i1)/2, cy:(c.box.j0+c.box.j1)/2}; }
 const near = (a,m)=>Math.min(a%m, m-a%m);
+
+// Esquemas de cor: valem para qualquer desenho
+const ESQUEMAS = [
+  {nome:'Original', desc:'As cores das fotos', remap:{}},
+  {nome:'Terra', desc:'Sem azul, linhas chocolate', remap:{AZ:'PE', MO:'CH'}},
+  {nome:'Rosa', desc:'Fundo rosa, chocolate e terracota', remap:{FE:'CH', TE:'RO', AZ:'RO', MO:'TE'}},
+  {nome:'Mar', desc:'Azul e chocolate', remap:{TE:'AZ', FE:'CH', PE:'AZ', MO:'CR', AZ:'AZ'}},
+  {nome:'Mel', desc:'Amarelo, pêssego e ferrugem', remap:{AZ:'PE', TE:'MO', MO:'FE'}},
+  {nome:'Contraste', desc:'Só chocolate e creme', remap:{AZ:'CR', TE:'CR', PE:'CR', FE:'CH', MO:'CH', RO:'CR'}},
+];
+
+// Texturas de preenchimento, sempre medidas a partir do centro (dx, dy >= 0), por isso espelhadas
+function textura(nome, C, dx, dy){
+  switch(nome){
+    case 'xadrez': return (dx+dy)%2 ? C.TE : C.FE;
+    case 'xadrezGrande': return (Math.floor((dx+1)/2)+Math.floor((dy+1)/2))%2 ? C.TE : C.FE;
+    case 'azulPontos': return (dx%2===0 && dy%2===0 && near(dx+dy,4)===0) ? C.CR : C.AZ;
+    case 'cremePontos': return (near(dx,4)===0 && near(dy,4)===0) ? C.TE : C.CR;
+    case 'pessegoPontos': return (near(dx,4)===2 && near(dy,4)===2) ? C.CR : C.PE;
+    case 'listras': return dy%2 ? C.PE : C.CR;
+    case 'creme': return C.CR;
+    case 'pessego': return C.PE;
+    case 'azul': return C.AZ;
+    case 'terracota': return C.TE;
+    case 'ferrugem': return C.FE;
+  }
+  return C.CR;
+}
+
+// Moldura das paredes: uma cor por anel, contando só ladrilhos inteiros; os cortes ficam creme.
+// Fichas especiais: TEdot (terracota com chocolate a cada 3), PEalt (pêssego e creme alternados), XZ (amarelo e creme alternados)
+const MOLDURAS = {
+  nenhuma: [],
+  fina: ['TE','CR','FE'],
+  dupla: ['TE','CR','FE','CR','MO'],
+};
+function anelMoldura(c, k, i, j, spec, C){
+  const w = c.dist[k];
+  if(w<0) return C.CR;
+  if(w>=spec.length) return -1;
+  const r = spec[w];
+  if(r==='TEdot') return (i+j)%3===0 ? C.CH : C.TE;
+  if(r==='PEalt') return (i+j)%2 ? C.PE : C.CR;
+  if(r==='XZ') return (i+j)%2 ? C.MO : C.CR;
+  return C[r];
+}
+// motivo de raio r centrado em (i,j): todo no chão e a 'folga' anéis da parede; 'fora' recusa uma área
+function cabe(c, i, j, r, folga, fora){
+  for(let y=j-r;y<=j+r;y++) for(let x=i-r;x<=i+r;x++){
+    if(x<0||y<0||x>=G.cols||y>=G.rows) return false;
+    const q = y*G.cols+x; if(!G.inside[q] || c.dist[q]<folga) return false;
+    if(fora && fora(x,y)) return false;
+  }
+  return true;
+}
+// Motivos de grade: a (horizontal) e b (vertical) são as distâncias ao centro do motivo
+const MOTIVOS = {
+  ponto:{r:0, em:(a,b)=>a===0&&b===0},
+  cruz:{r:1, em:(a,b)=>(a===0&&b<=1)||(b===0&&a<=1)},
+  quadrado:{r:1, em:(a,b)=>a<=1&&b<=1},
+  xis:{r:1, em:(a,b)=>a===b},
+  losango:{r:2, em:(a,b)=>a+b<=2},
+  anel:{r:2, em:(a,b)=>Math.max(a,b)===2},
+};
+// Desenha uma grade de motivos espelhada no centro; devolve -1 onde não há motivo
+function grade(c, i, j, cx, cy, sp, motivo, cor, offset, folga, fora){
+  const M = MOTIVOS[motivo], dx = Math.abs(i-cx)+offset, dy = Math.abs(j-cy)+offset;
+  const a = near(dx,sp), b = near(dy,sp);
+  if(a>M.r || b>M.r || !M.em(a,b)) return -1;
+  const ci = i>=cx ? cx+Math.round(dx/sp)*sp-offset : cx-Math.round(dx/sp)*sp+offset;
+  const cj = j>=cy ? cy+Math.round(dy/sp)*sp-offset : cy-Math.round(dy/sp)*sp+offset;
+  return cabe(c, ci, cj, M.r, folga, fora) ? cor : -1;
+}
+
 const GENS = {
-  tapete:{label:'Tapete', desc:'Tapete simétrico como nas fotos: faixa com cruzes, xadrez de duas cores, losango em degraus e, em volta, fundo azul com motivos em grade.', fn(c){
-    const {CR,PE,TE,FE,CH,AZ,MO,RO} = cores(c);
-    const {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
-    const BW = 7, maxD = Math.min(R-L, B-T)/2-BW-1, D = Math.max(3, Math.min(maxD, 2+c.scale));
-    const sp = c.inten<.34 ? 8 : c.inten<.67 ? 6 : 4, h = sp/2;
-    // motivo de raio r centrado em (i,j): todo ele no chão, a 2 ladrilhos da moldura e do tapete
-    const fits = (i,j,r)=>{
-      for(let y=j-r;y<=j+r;y++) for(let x=i-r;x<=i+r;x++){
-        if(x<0||y<0||x>=G.cols||y>=G.rows) return false;
-        const q = y*G.cols+x; if(!G.inside[q] || c.dist[q]<5) return false;
-        if(x>=L-2 && x<=R+2 && y>=T-2 && y<=B+2) return false;
-      }
-      return true;
-    };
-    return (k,i,j)=>{
-      const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
-      if(i<L || i>R || j<T || j>B){
-        // moldura junto às paredes, acompanhando o contorno do chão
-        const w = c.dist[k];
-        if(w<0) return CR;
-        if(w===0) return TE;
-        if(w===1) return CR;
-        if(w===2) return FE;
-        // fundo: azul com cruzes ferrugem numa grade e um ponto branco no meio de cada quatro cruzes;
-        // só entra o motivo que cabe inteiro, com folga da moldura e do tapete
-        const a = near(dx,sp), b = near(dy,sp);
-        if((a===0 && b<=1) || (b===0 && a<=1)){
-          const ci = i>=cx ? cx+Math.round(dx/sp)*sp : cx-Math.round(dx/sp)*sp;
-          const cj = j>=cy ? cy+Math.round(dy/sp)*sp : cy-Math.round(dy/sp)*sp;
-          if(fits(ci,cj,1)) return FE;
+  tapete:{label:'Tapete', desc:'Um tapete no meio da sala, com faixa de borda, miolo e um desenho no centro.',
+    vars:[
+      {nome:'Clássico', m:5, borda:'cruzes', campo:'xadrez', centro:'losango', D:7, fora:'cruzes', moldura:'fina'},
+      {nome:'Grande', m:4, borda:'cruzes', campo:'xadrez', centro:'losango', D:10, fora:'azul', moldura:'fina'},
+      {nome:'Pequeno', m:9, borda:'linhas', campo:'azulPontos', centro:'losango', D:4, fora:'creme', moldura:'dupla'},
+      {nome:'Dentes', m:5, borda:'dentes', campo:'xadrez', centro:'quadrados', D:9, fora:'creme', moldura:'fina'},
+      {nome:'Medalhão', m:5, borda:'linhas', campo:'xadrezGrande', centro:'medalhao', D:9, fora:'cruzes', moldura:'fina'},
+      {nome:'Borda xadrez', m:5, borda:'xadrez', campo:'azulPontos', centro:'losango', D:8, fora:'creme', moldura:'dupla'},
+      {nome:'Limpo', m:6, borda:'linhas', campo:'creme', centro:'losango', D:6, fora:'azul', moldura:'fina'},
+      {nome:'Quadrados', m:4, borda:'cruzes', campo:'azulPontos', centro:'quadrados', D:12, fora:'creme', moldura:'fina'},
+      {nome:'Sem centro', m:5, borda:'dentes', campo:'xadrez', centro:'nenhum', D:0, fora:'cruzes', moldura:'fina'},
+      {nome:'Pêssego', m:4, borda:'cruzes', campo:'pessegoPontos', centro:'medalhao', D:10, fora:'azul', moldura:'dupla'},
+    ],
+    fn(c, p){
+      const C = cores(c), {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
+      const FR = MOLDURAS[p.moldura], BW = p.borda==='linhas'||p.borda==='xadrez' ? 5 : 7;
+      const maxD = Math.min(R-L, B-T)/2-BW-1, D = Math.max(2, Math.min(maxD, p.D));
+      const foraTapete = (x,y)=>x>=L-2 && x<=R+2 && y>=T-2 && y<=B+2, folga = FR.length+2;
+      return (k,i,j)=>{
+        const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
+        if(i<L || i>R || j<T || j>B){
+          const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+          if(p.fora==='azul') return C.AZ;
+          if(p.fora==='creme') return C.CR;
+          if(p.fora==='pontos'){ const g = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga,foraTapete); return g>=0 ? g : C.CR; }
+          const g = grade(c,i,j,cx,cy,6,'cruz',C.FE,0,folga,foraTapete); if(g>=0) return g;
+          const g2 = grade(c,i,j,cx,cy,6,'ponto',C.CR,3,folga,foraTapete); return g2>=0 ? g2 : C.AZ;
         }
-        if(near(dx+h,sp)===0 && near(dy+h,sp)===0 && fits(i,j,0)) return CR;
-        return AZ;
-      }
-      const e = Math.min(i-L, R-i, j-T, B-j);
-      const t = (e===i-L || e===R-i) ? dy : dx;
-      if(e===0 || e===6) return MO;
-      if(e===1 || e===5) return FE;
-      if(e<=4){ const m = near(t,4); return (e===3 && m<=1) || (m===0) ? FE : PE; }
-      const d = dx+dy;
-      if(d===D) return MO;
-      if(d===D+1) return CR;
-      if(d>D) return (dx+dy)%2 ? TE : FE;
-      if(d<=1) return FE;
-      if(d===2) return MO;
-      return (dx%2===0 && dy%2===0 && (dx+dy)%4===0) ? CR : AZ;
-    };
-  }},
-  moldura:{label:'Moldura', desc:'Faixa larga acompanhando as paredes e, no meio, chão creme com pontos numa grade regular.', fn(c){
-    const C = cores(c), {cx, cy} = centro(c), bw = 1+Math.floor(c.scale/3), sp = c.inten<.34 ? 8 : c.inten<.67 ? 6 : 4, h = sp/2;
-    const cabe = (i,j)=>{ const q = j*G.cols+i; return i>=0 && j>=0 && i<G.cols && j<G.rows && G.inside[q] && c.dist[q]>=bw+4; };
-    return (k,i,j)=>{
-      const d = c.dist[k];
-      if(d<0 || d===0 || d===bw+1) return C.CR;
-      if(d===1) return (i+j)%3===0 ? C.CH : C.TE;
-      if(d<=bw) return C.FE;
-      if(d===bw+2) return (i+j)%2 ? C.PE : C.CR;
-      const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
-      if(near(dx,sp)===0 && near(dy,sp)===0 && cabe(i,j)) return C.AZ;
-      if(near(dx+h,sp)===0 && near(dy+h,sp)===0 && cabe(i,j)) return C.PE;
-      return C.CR;
-    };
-  }},
-  losango:{label:'Losango', desc:'Losangos em degraus, um dentro do outro, alternando xadrez e azul com pontos, com contorno amarelo.', fn(c){
-    const C = cores(c), {cx, cy} = centro(c), step = 4+Math.round(c.scale/2), sp = c.inten<.5 ? 4 : 2;
-    return (k,i,j)=>{
-      const f = molduraParede(c,k,C); if(f>=0) return f;
-      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), d = dx+dy, r = d%step;
-      if(r===0) return C.MO;
-      if(Math.floor(d/step)%2===0) return d%2 ? C.TE : C.FE;
-      return (dx%2===0 && dy%2===0 && near(d,sp)===0) ? C.CR : C.AZ;
-    };
-  }},
-  trelica:{label:'Treliça', desc:'Fundo azul com cruzes e pontos numa grade regular, como na foto das frutas.', fn(c){
-    const C = cores(c), {cx, cy} = centro(c), sp = 4+2*Math.floor(c.scale/3), h = sp/2;
-    const ponto = c.inten<.34 ? -1 : c.inten<.67 ? C.CR : C.MO;
-    // motivo de raio r centrado em (i,j): todo no chão e com uma fileira azul antes da moldura
-    const cabe = (i,j,r)=>{
-      for(let y=j-r;y<=j+r;y++) for(let x=i-r;x<=i+r;x++){
-        if(x<0||y<0||x>=G.cols||y>=G.rows) return false;
-        const q = y*G.cols+x; if(!G.inside[q] || c.dist[q]<4) return false;
-      }
-      return true;
-    };
-    return (k,i,j)=>{
-      const f = molduraParede(c,k,C); if(f>=0) return f;
-      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), a = near(dx,sp), b = near(dy,sp);
-      if((a===0 && b<=1) || (b===0 && a<=1)){
-        const ci = i>=cx ? cx+Math.round(dx/sp)*sp : cx-Math.round(dx/sp)*sp;
-        const cj = j>=cy ? cy+Math.round(dy/sp)*sp : cy-Math.round(dy/sp)*sp;
-        if(cabe(ci,cj,1)) return C.FE;
-      }
-      if(ponto>=0 && near(dx+h,sp)===0 && near(dy+h,sp)===0 && cabe(i,j,0)) return ponto;
-      return C.AZ;
-    };
-  }},
-  faixas:{label:'Faixas', desc:'Faixas paralelas à porta, alternando xadrez e azul com pontos, separadas por linhas amarelas e espelhadas a partir do meio.', fn(c){
-    const C = cores(c), {cx, cy} = centro(c), U = 4+c.scale, hU = Math.floor(U/2), mid = Math.floor((U+1)/2);
-    const azul = (dx,row)=>{
-      if(row===0 && near(dx,4)===0) return C.CR;
-      if(c.inten>=.5 && Math.abs(row)===2 && near(dx+2,4)===0) return C.PE;
-      return C.AZ;
-    };
-    return (k,i,j)=>{
-      const f = molduraParede(c,k,C); if(f>=0) return f;
-      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), q = dy-hU-1;
-      if(q<0) return azul(dx, dy);
-      const r = q%(U+1), band = 1+Math.floor(q/(U+1));
-      if(r===0) return C.MO;
-      if(band%2) return (dx+dy)%2 ? C.TE : C.FE;
-      return azul(dx, r-mid);
-    };
-  }},
-  degraus:{label:'Degraus', desc:'Divisas em V que descem em degraus, com linha amarela entre as faixas, espelhadas no eixo do meio.', fn(c){
-    const C = cores(c), {cx, cy} = centro(c), w = 3+Math.floor(c.scale/2);
-    return (k,i,j)=>{
-      const f = molduraParede(c,k,C); if(f>=0) return f;
-      const dx = Math.abs(i-cx), dy = Math.abs(j-cy), t = (j-cy)-dx+1000*(w+1);
-      const r = t%(w+1), s = Math.floor(t/(w+1));
-      if(r===0) return C.MO;
-      if(s%2===0) return (dx+dy)%2 ? C.TE : C.FE;
-      return c.inten>=.5 ? (dx%2===0 && r===Math.ceil(w/2) ? C.CR : C.AZ) : C.PE;
-    };
-  }},
+        const e = Math.min(i-L, R-i, j-T, B-j), t = (e===i-L || e===R-i) ? dy : dx;
+        if(e<BW){
+          if(p.borda==='cruzes'){
+            if(e===0 || e===6) return C.MO;
+            if(e===1 || e===5) return C.FE;
+            const m = near(t,4); return (e===3 && m<=1) || m===0 ? C.FE : C.PE;
+          }
+          if(p.borda==='dentes'){
+            if(e===0) return C.FE;
+            if(e===1 || e===6) return C.CR;
+            if(e===5) return C.TE;
+            const m = t%4, tri = Math.min(m, 4-m); return e-2<tri ? C.PE : C.CR;
+          }
+          if(p.borda==='xadrez'){
+            if(e===0 || e===4) return C.FE;
+            return (t+e)%2 ? C.MO : C.CR;
+          }
+          return [C.MO, C.CR, C.FE, C.CR, C.MO][e];
+        }
+        if(p.centro==='losango'){
+          const d = dx+dy;
+          if(d===D) return C.MO;
+          if(d===D+1) return C.CR;
+          if(d<D) return d<=1 ? C.FE : d===2 ? C.MO : textura('azulPontos',C,dx,dy);
+        }
+        if(p.centro==='quadrados'){
+          const q = Math.max(dx,dy);
+          if(q<=D){ if(q%3===0) return C.MO; return Math.floor(q/3)%2 ? C.AZ : C.PE; }
+          if(q===D+1) return C.CR;
+        }
+        if(p.centro==='medalhao'){
+          const w = Math.max(1, Math.round(D/3)), dentro = (x,y)=>(x<=w && y<=D) || (y<=w && x<=D);
+          if(dentro(dx,dy)) return !dentro(dx+1,dy) || !dentro(dx,dy+1) ? C.MO : textura('azulPontos',C,dx,dy);
+          if(dentro(Math.max(0,dx-1),dy) || dentro(dx,Math.max(0,dy-1))) return C.CR;
+        }
+        return textura(p.campo,C,dx,dy);
+      };
+    }},
+  moldura:{label:'Moldura', desc:'Uma faixa acompanhando as paredes e o meio da sala mais calmo.',
+    vars:[
+      {nome:'Larga', anel:['CR','TEdot','FE','FE','CR','PEalt'], miolo:'pontosAP'},
+      {nome:'Fina', anel:['TE','CR','FE'], miolo:'pontosTE'},
+      {nome:'Dupla', anel:['FE','CR','MO','CR','FE'], miolo:'creme'},
+      {nome:'Xadrez', anel:['FE','XZ','XZ','FE'], miolo:'azulPontos'},
+      {nome:'Bem larga', anel:['FE','FE','TEdot','FE','FE','CR','MO'], miolo:'azul'},
+      {nome:'Azul', anel:['AZ','CR','AZ','CR','FE'], miolo:'pontosFE'},
+      {nome:'Terracota', anel:['TE','TE','TE','CR','TEdot'], miolo:'pessegoPontos'},
+      {nome:'Três linhas', anel:['MO','CR','FE','CR','MO','CR','FE'], miolo:'creme'},
+      {nome:'Pêssego', anel:['FE','PEalt','PEalt','PEalt','FE','CR','MO'], miolo:'azulPontos'},
+      {nome:'Pontilhada', anel:['CR','TEdot','CR','TEdot'], miolo:'pontosAP'},
+    ],
+    fn(c, p){
+      const C = cores(c), {cx, cy} = centro(c), folga = p.anel.length+2;
+      return (k,i,j)=>{
+        const f = anelMoldura(c,k,i,j,p.anel,C); if(f>=0) return f;
+        const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
+        if(p.miolo==='pontosAP'){ const a = grade(c,i,j,cx,cy,6,'ponto',C.AZ,0,folga); if(a>=0) return a; const b = grade(c,i,j,cx,cy,6,'ponto',C.PE,3,folga); return b>=0 ? b : C.CR; }
+        if(p.miolo==='pontosTE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga); return a>=0 ? a : C.CR; }
+        if(p.miolo==='pontosFE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.FE,0,folga); return a>=0 ? a : C.CR; }
+        return textura(p.miolo,C,dx,dy);
+      };
+    }},
+  losango:{label:'Losango', desc:'Losangos em degraus, um dentro do outro, separados por linhas.',
+    vars:[
+      {nome:'Clássico', step:6, sx:1, faixas:['xadrez','azulPontos'], linha:'MO'},
+      {nome:'Largo', step:9, sx:1, faixas:['xadrez','azulPontos'], linha:'MO', dupla:true},
+      {nome:'Estreito', step:4, sx:1, faixas:['xadrez','creme'], linha:'FE'},
+      {nome:'Achatado', step:6, sx:2, faixas:['xadrez','azulPontos'], linha:'MO'},
+      {nome:'Três texturas', step:6, sx:1, faixas:['xadrez','azulPontos','pessego'], linha:'MO'},
+      {nome:'Cores lisas', step:5, sx:1, faixas:['ferrugem','pessego','azul'], linha:'CR'},
+      {nome:'Pontilhado', step:7, sx:1, faixas:['cremePontos','azulPontos'], linha:'TE', dupla:true},
+      {nome:'Xadrez grande', step:8, sx:1, faixas:['xadrezGrande','creme'], linha:'MO'},
+      {nome:'Achatado largo', step:10, sx:2, faixas:['xadrez','pessego'], linha:'MO', dupla:true},
+      {nome:'Medalhão', step:6, sx:1, faixas:['xadrez','azulPontos','xadrez'], linha:'MO', max:3},
+    ],
+    fn(c, p){
+      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina;
+      return (k,i,j)=>{
+        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const dx = Math.abs(i-cx), dy = Math.abs(j-cy), d = Math.floor(dx/p.sx)+dy, band = Math.floor(d/p.step), r = d%p.step;
+        if(p.max && band>=p.max) return band===p.max && r===0 ? C[p.linha] : textura('creme',C,dx,dy);
+        if(r===0) return C[p.linha];
+        if(p.dupla && (r===1 || r===p.step-1)) return C.CR;
+        return textura(p.faixas[band%p.faixas.length],C,dx,dy);
+      };
+    }},
+  trelica:{label:'Treliça', desc:'Um fundo liso com motivos repetidos numa grade regular.',
+    vars:[
+      {nome:'Cruzes', sp:6, motivo:'cruz', cor:'FE', motivo2:'ponto', cor2:'CR', fundo:'azul'},
+      {nome:'Cruzes miúdas', sp:4, motivo:'cruz', cor:'FE', fundo:'azul'},
+      {nome:'Quadrados', sp:6, motivo:'quadrado', cor:'FE', motivo2:'ponto', cor2:'MO', fundo:'azul'},
+      {nome:'Losangos', sp:8, motivo:'losango', cor:'TE', motivo2:'ponto', cor2:'FE', fundo:'creme'},
+      {nome:'Xis', sp:6, motivo:'xis', cor:'CH', motivo2:'ponto', cor2:'TE', fundo:'pessego'},
+      {nome:'Pontos', sp:4, motivo:'ponto', cor:'FE', motivo2:'ponto', cor2:'AZ', fundo:'creme'},
+      {nome:'Anéis', sp:6, motivo:'anel', cor:'MO', motivo2:'ponto', cor2:'FE', fundo:'azul'},
+      {nome:'Grandes', sp:10, motivo:'losango', cor:'FE', motivo2:'cruz', cor2:'MO', fundo:'azul'},
+      {nome:'Creme', sp:6, motivo:'cruz', cor:'TE', motivo2:'ponto', cor2:'AZ', fundo:'creme'},
+      {nome:'Sobre xadrez', sp:8, motivo:'losango', cor:'CR', motivo2:'ponto', cor2:'MO', fundo:'xadrez'},
+    ],
+    fn(c, p){
+      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina, folga = FR.length+1;
+      return (k,i,j)=>{
+        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const g = grade(c,i,j,cx,cy,p.sp,p.motivo,C[p.cor],0,folga); if(g>=0) return g;
+        if(p.motivo2){ const g2 = grade(c,i,j,cx,cy,p.sp,p.motivo2,C[p.cor2],p.sp/2,folga); if(g2>=0) return g2; }
+        return textura(p.fundo,C,Math.abs(i-cx),Math.abs(j-cy));
+      };
+    }},
+  faixas:{label:'Faixas', desc:'Faixas paralelas espelhadas a partir do meio, separadas por linhas.',
+    vars:[
+      {nome:'Clássico', dir:'h', U:9, seq:['azulPontos','xadrez'], sep:['MO']},
+      {nome:'Em pé', dir:'v', U:9, seq:['azulPontos','xadrez'], sep:['MO']},
+      {nome:'Estreitas', dir:'h', U:5, seq:['azul','xadrez','pessego'], sep:['MO']},
+      {nome:'Largas', dir:'h', U:13, seq:['azulPontos','xadrez'], sep:['FE','CR','FE']},
+      {nome:'Tons', dir:'h', U:7, seq:['creme','pessego','terracota'], sep:['FE']},
+      {nome:'Pontilhadas', dir:'v', U:7, seq:['creme','azul'], sep:['PONTOS']},
+      {nome:'Listras finas', dir:'h', U:3, seq:['pessego','creme'], sep:['FE']},
+      {nome:'Dois xadrezes', dir:'h', U:9, seq:['xadrez','xadrezGrande'], sep:['MO','CR','MO']},
+      {nome:'Em pé largas', dir:'v', U:13, seq:['xadrez','azulPontos','pessego'], sep:['FE','CR','FE']},
+      {nome:'Marcadas', dir:'h', U:9, seq:['creme'], sep:['FE','FE']},
+    ],
+    fn(c, p){
+      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina, sw = p.sep.length, P = p.U+sw, hU = Math.floor(p.U/2);
+      return (k,i,j)=>{
+        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const dx = Math.abs(i-cx), dy = Math.abs(j-cy), a = p.dir==='h' ? dy : dx, b = p.dir==='h' ? dx : dy;
+        const q = a-hU-1;
+        if(q<0) return textura(p.seq[0],C,dx,dy);
+        const r = q%P, band = 1+Math.floor(q/P);
+        if(r<sw){ const s = p.sep[r]; return s==='PONTOS' ? (b%2 ? C.CR : C.FE) : C[s]; }
+        return textura(p.seq[band%p.seq.length],C,dx,dy);
+      };
+    }},
+  degraus:{label:'Degraus', desc:'Divisas e zigue-zagues em degraus, com linha entre as faixas.',
+    vars:[
+      {nome:'Clássico', forma:'A', w:5, faixas:['xadrez','pessego'], linha:'MO'},
+      {nome:'Invertido', forma:'V', w:5, faixas:['xadrez','pessego'], linha:'MO'},
+      {nome:'Deitado', forma:'lado', w:5, faixas:['xadrez','azulPontos'], linha:'MO'},
+      {nome:'Zigue-zague', forma:'zig', Z:6, w:4, faixas:['xadrez','pessego'], linha:'MO'},
+      {nome:'Largo', forma:'A', w:8, faixas:['xadrez','azulPontos','pessego'], linha:'MO'},
+      {nome:'Estreito', forma:'A', w:3, faixas:['ferrugem','creme'], linha:'TE'},
+      {nome:'Achatado', forma:'A', sx:2, w:5, faixas:['xadrez','pessego'], linha:'MO'},
+      {nome:'Zigue largo', forma:'zig', Z:10, w:6, faixas:['azulPontos','xadrez'], linha:'FE'},
+      {nome:'Azul', forma:'V', w:6, faixas:['azul','creme','pessego'], linha:'TE'},
+      {nome:'Zigue miúdo', forma:'zig', Z:4, w:3, faixas:['xadrez','creme'], linha:'MO'},
+    ],
+    fn(c, p){
+      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina, sx = p.sx||1, P = p.w+1;
+      return (k,i,j)=>{
+        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const dx = Math.abs(i-cx), dy = Math.abs(j-cy), h = Math.floor(dx/sx);
+        let t = p.forma==='A' ? (j-cy)-h : p.forma==='V' ? (cy-j)-h : p.forma==='lado' ? (i-cx)-dy : (j-cy)-near(dx,2*p.Z);
+        t += 1000*P;
+        const r = t%P, s = Math.floor(t/P);
+        if(r===0) return C[p.linha];
+        return textura(p.faixas[s%p.faixas.length],C,dx,dy);
+      };
+    }},
 };
 function targets(){ const t = []; const useSel = where==='sel' && selCount()>0; for(let k=0;k<G.n;k++) if(G.inside[k] && (!useSel || sel[k])) t.push(k); return t; }
 function distTo(tg){
@@ -857,11 +992,11 @@ function rugBox(tg, m=RUG_MARGIN){
   if((b.j1-b.j0)%2) b.j1--;
   return b;
 }
-// Pinta o estilo em S.cells, sem desfazer nem salvar (a galeria usa isto para as miniaturas)
+// Pinta o desenho em S.cells, sem desfazer nem salvar (a galeria usa isto para as miniaturas).
+// A moldura das paredes conta só ladrilhos inteiros, para ter a mesma grossura em todos os lados.
 function paint(style, v, tg){
-  // a moldura das paredes conta só ladrilhos inteiros, para ter a mesma grossura em todos os lados
-  const c = {R:roles(), scale:v.scale, inten:v.inten/100, remap:v.remap, box:rugBox(tg, style==='tapete' ? Math.max(4, Math.min(9, 10-v.scale)) : RUG_MARGIN), dist:distTo(tg.filter(k=>G.area[k]>=99.5))};
-  const f = GENS[style].fn(c);
+  const c = {R:roles(), remap:v.remap, box:rugBox(tg, v.m ?? RUG_MARGIN), dist:distTo(tg.filter(k=>G.area[k]>=99.5))};
+  const f = GENS[style].fn(c, v);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
 }
 function generate(style, v, quiet){
@@ -873,7 +1008,8 @@ function generate(style, v, quiet){
 function setWhere(w){ where = w; $('whereAll').setAttribute('aria-pressed', w==='all'); $('whereSel').setAttribute('aria-pressed', w==='sel'); }
 $('whereAll').onclick = ()=>setWhere('all'); $('whereSel').onclick = ()=>setWhere('sel');
 
-/* ---------- Galeria: 6 estilos × 5 variações ---------- */
+/* ---------- Galeria em 3 passos: tipo › desenho › cores ---------- */
+const galSt = {passo:1, tipo:null, des:null};
 function drawThumb(cv, style, v){
   const w = cv.clientWidth || 180, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
   cv.width = Math.round(w*r); cv.height = Math.round(h*r);
@@ -885,27 +1021,41 @@ function drawThumb(cv, style, v){
   drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false);
   S.cells = keepCells; S.plan = keepPlan;
 }
-function openGal(){
-  const onSel = where==='sel' && selCount()>0;
-  $('galNote').textContent = onSel ? 'Clique num desenho para aplicar só nos ladrilhos selecionados.' : 'Clique num desenho para aplicar no chão todo.';
-  $('galList').innerHTML = Object.entries(GENS).map(([k,g])=>`
-    <section class="galsty">
-      <h3>${g.label}</h3>
-      <p>${g.desc}</p>
-      <div class="cards">${VARS.map((v,n)=>`<button class="card" data-s="${k}" data-v="${n}" aria-label="${g.label}, ${v.nome}"><canvas></canvas><span>${v.nome}</span></button>`).join('')}</div>
-    </section>`).join('');
-  $('gal').classList.remove('hidden'); document.body.style.overflow = 'hidden';
-  requestAnimationFrame(()=>$('galList').querySelectorAll('.card').forEach(b=>drawThumb(b.querySelector('canvas'), b.dataset.s, VARS[+b.dataset.v])));
-  $('galClose').focus();
+function galItems(){
+  const st = galSt;
+  if(st.passo===1) return Object.entries(GENS).map(([k,g])=>({nome:g.label, sub:g.desc, tipo:k, v:g.vars[0]}));
+  const g = GENS[st.tipo];
+  if(st.passo===2) return g.vars.map(v=>({nome:v.nome, tipo:st.tipo, v}));
+  const v = g.vars[st.des];
+  return ESQUEMAS.map(e=>({nome:e.nome, sub:e.desc, tipo:st.tipo, v:{...v, remap:e.remap}}));
 }
+function renderGal(){
+  const st = galSt, onSel = where==='sel' && selCount()>0, items = galItems();
+  $('galSteps').innerHTML = ['Tipo','Desenho','Cores'].map((t,n)=>`<span class="${n+1===st.passo?'on':''}">${n+1}. ${t}</span>`).join('<span aria-hidden="true">›</span>');
+  $('galBack').classList.toggle('hidden', st.passo===1);
+  const g = GENS[st.tipo];
+  $('galTitle').textContent = st.passo===1 ? 'Escolha o tipo' : st.passo===2 ? `${g.label}: escolha o desenho` : `${g.label} · ${g.vars[st.des].nome}: escolha as cores`;
+  $('galNote').textContent = st.passo===1 ? 'Depois você escolhe o desenho e as cores.'
+    : st.passo===2 ? `${g.vars.length} desenhos, todos nas cores originais. As cores vêm no próximo passo.`
+    : onSel ? 'Clique para aplicar só nos ladrilhos selecionados.' : 'Clique para aplicar no chão.';
+  $('galList').innerHTML = `<div class="cards cards-${st.passo}">${items.map((it,n)=>`<button class="card" data-n="${n}" aria-label="${esc(it.nome)}"><canvas></canvas><span class="cn">${esc(it.nome)}</span>${it.sub?`<span class="cs">${esc(it.sub)}</span>`:''}</button>`).join('')}</div>`;
+  $('gal').scrollTop = 0;
+  requestAnimationFrame(()=>$('galList').querySelectorAll('.card').forEach(b=>{ const it = items[+b.dataset.n]; drawThumb(b.querySelector('canvas'), it.tipo, it.v); }));
+}
+function openGal(){ galSt.passo = 1; $('gal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; renderGal(); $('galClose').focus(); }
 function closeGal(){ $('gal').classList.add('hidden'); document.body.style.overflow = ''; $('galList').innerHTML = ''; }
 $('genBtn').onclick = openGal;
 $('galClose').onclick = closeGal;
+$('galBack').onclick = ()=>{ galSt.passo = Math.max(1, galSt.passo-1); renderGal(); };
 $('gal').onclick = e=>{
   if(e.target===$('gal')){ closeGal(); return; }
   const b = e.target.closest('.card'); if(!b) return;
-  const g = GENS[b.dataset.s], v = VARS[+b.dataset.v];
-  generate(b.dataset.s, v); closeGal(); toast(`${g.label} · ${v.nome} aplicado. Ctrl+Z desfaz.`);
+  const n = +b.dataset.n, st = galSt;
+  if(st.passo===1){ st.tipo = Object.keys(GENS)[n]; st.passo = 2; renderGal(); return; }
+  if(st.passo===2){ st.des = n; st.passo = 3; renderGal(); return; }
+  const g = GENS[st.tipo], v = g.vars[st.des], e2 = ESQUEMAS[n];
+  generate(st.tipo, {...v, remap:e2.remap}); closeGal();
+  toast(`${g.label} · ${v.nome} · ${e2.nome} aplicado. Ctrl+Z desfaz.`);
 };
 document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('gal').classList.contains('hidden')) closeGal(); });
 
@@ -1069,7 +1219,7 @@ async function boot(){
     }catch(e){ setTimeout(()=>toast('O link não abriu. Mostrando o último desenho.'), 300); }
   }
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
-  if(!loaded){ regrid(null,null); generate('tapete', VARS[0], true); }
+  if(!loaded){ regrid(null,null); generate('tapete', GENS.tapete.vars[0], true); }
   syncControls(); updSel(); updPalette(); updTools(); updUndo(); renderSaved();
   new ResizeObserver(resize).observe(vp); resize();
 }
