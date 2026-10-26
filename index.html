@@ -83,6 +83,19 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;font-size:14px;padding:12px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);z-index:10}
 .toast.show{opacity:1;transform:translateX(-50%)}
+.gal{position:fixed;inset:0;background:rgba(42,34,29,.56);overflow:auto;z-index:20;padding:24px}
+.galbox{max-width:1080px;margin:0 auto;background:var(--panel);border-radius:12px;padding:24px}
+.galhead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:8px}
+.galhead h2{font-size:24px;line-height:1.25;margin:0 0 4px}
+.galhead .note{font-size:14px;color:var(--ink2);margin:0}
+.galsty{padding:24px 0 0}
+.galsty h3{font-size:16px;line-height:1.25;margin:0 0 4px}
+.galsty p{font-size:14px;color:var(--ink2);margin:0 0 12px}
+.cards{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.card{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;cursor:pointer;text-align:left}
+.card canvas{width:100%;aspect-ratio:611/530;display:block;border-radius:8px;background:var(--bg)}
+.card:hover canvas,.card:focus-visible canvas{outline:2px solid var(--ink);outline-offset:2px}
+.card span{font-size:14px;line-height:1.25}
 .linkbox{display:none;margin-top:8px}
 .linkbox.show{display:block}
 .hidden{display:none !important}
@@ -95,6 +108,9 @@ input[type=range]{width:100%;accent-color:var(--accent)}
   .viewport{flex:none;height:auto;aspect-ratio:601/570;max-height:72svh}
   .sep{display:none}
   .tlabel{display:none}
+  .gal{padding:0}
+  .galbox{border-radius:0;padding:16px;min-height:100%}
+  .cards{grid-template-columns:repeat(3,minmax(0,1fr))}
   .btn.tool{width:40px;padding:0}
 }
 </style>
@@ -155,22 +171,13 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 
     <section class="sec">
       <h2>Gerar desenho</h2>
-      <p class="note" id="genDesc"></p>
+      <p class="note">6 estilos com 5 variações cada. Escolha um e ele vai para o chão. Dá para desfazer.</p>
       <div class="stack">
-        <div class="seg" id="genStyle" role="group" aria-label="Estilo"></div>
-        <div>
-          <div class="inline"><span>Tamanho das formas</span><span class="val" id="scaleVal"></span></div>
-          <input type="range" id="genScale" min="1" max="10" value="5" aria-label="Tamanho das formas">
-        </div>
-        <div>
-          <div class="inline"><span>Quantidade de cor</span><span class="val" id="intenVal"></span></div>
-          <input type="range" id="genInten" min="0" max="100" value="45" aria-label="Quantidade de cor">
-        </div>
-        <div class="seg" role="group" aria-label="Onde gerar">
+        <div class="seg" role="group" aria-label="Onde aplicar">
           <button class="btn small" id="whereAll" aria-pressed="true">Chão todo</button>
           <button class="btn small" id="whereSel" aria-pressed="false">Só a seleção</button>
         </div>
-        <button class="btn primary" id="genBtn">Gerar desenho</button>
+        <button class="btn primary" id="genBtn">Escolher desenho</button>
       </div>
     </section>
 
@@ -217,6 +224,18 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       </div>
     </section>
   </aside>
+</div>
+<div class="gal hidden" id="gal" role="dialog" aria-modal="true" aria-labelledby="galTitle">
+  <div class="galbox">
+    <div class="galhead">
+      <div>
+        <h2 id="galTitle">Escolher desenho</h2>
+        <p class="note" id="galNote"></p>
+      </div>
+      <button class="btn icon" id="galClose" title="Fechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div id="galList"></div>
+  </div>
 </div>
 <div class="toast" id="toast" role="status"></div>
 
@@ -655,28 +674,35 @@ $('selColor').onclick = ()=>{ sel.fill(0); for(let k=0;k<G.n;k++) if(G.inside[k]
 $('selPaint').onclick = ()=>{ pushUndo(); for(let k=0;k<G.n;k++) if(sel[k]) S.cells[k] = cur; changed(); };
 
 /* ---------- Gerador ---------- */
-function rng(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
 function roles(){
   const o = S.palette.map((_,i)=>i).sort((a,b)=>lum(S.palette[b])-lum(S.palette[a]));
   const nd = o.length>=6 ? 3 : Math.max(1, Math.floor(o.length/2));
   const dark = o.slice(-nd), mid = o.slice(1, o.length-nd);
   return {o, light:o[0], rest:o.slice(1), dark, mid:mid.length?mid:dark};
 }
-const any = (r,arr)=>arr[Math.floor(r()*arr.length)];
 // Cores pelo papel que têm nas fotos; se a paleta tiver menos cores, usa as que existem
 function cores(c){
   const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
   const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
-  return {CR,PE,TE,FE,CH,AZ,MO,RO};
+  const base = {CR,PE,TE,FE,CH,AZ,MO,RO}, C = {...base};
+  for(const [papel, outro] of Object.entries(c.remap||{})) C[papel] = base[outro];
+  return C;
 }
+// As 5 variações de cada estilo; as colunas são as mesmas em todos, para comparar
+const VARS = [
+  {nome:'Original', scale:5, inten:45},
+  {nome:'Miúdo', scale:2, inten:80},
+  {nome:'Graúdo', scale:9, inten:20},
+  {nome:'Terra', scale:5, inten:45, remap:{AZ:'PE', MO:'CH'}},
+  {nome:'Rosa', scale:7, inten:70, remap:{FE:'CH', TE:'RO', AZ:'CR', MO:'TE'}},
+];
 // Moldura das paredes, igual à do Tapete: terracota, creme, ferrugem; cortes ficam creme. -1 fora dela.
 function molduraParede(c,k,C){ const w = c.dist[k]; return w<0 ? C.CR : w===0 ? C.TE : w===1 ? C.CR : w===2 ? C.FE : -1; }
 function centro(c){ return {cx:(c.box.i0+c.box.i1)/2, cy:(c.box.j0+c.box.j1)/2}; }
 const near = (a,m)=>Math.min(a%m, m-a%m);
 const GENS = {
   tapete:{label:'Tapete', desc:'Tapete simétrico como nas fotos: faixa com cruzes, xadrez de duas cores, losango em degraus e, em volta, fundo azul com motivos em grade.', fn(c){
-    const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
-    const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
+    const {CR,PE,TE,FE,CH,AZ,MO,RO} = cores(c);
     const {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
     const BW = 7, maxD = Math.min(R-L, B-T)/2-BW-1, D = Math.max(3, Math.min(maxD, 2+c.scale));
     const sp = c.inten<.34 ? 8 : c.inten<.67 ? 6 : 4, h = sp/2;
@@ -723,16 +749,19 @@ const GENS = {
       return (dx%2===0 && dy%2===0 && (dx+dy)%4===0) ? CR : AZ;
     };
   }},
-  moldura:{label:'Moldura', desc:'Faixa de cor acompanhando as paredes, com salpicado no meio.', fn(c){
-    const R = c.R, bw = 1+Math.floor(c.scale/3), pa = .06+c.inten*.5;
+  moldura:{label:'Moldura', desc:'Faixa larga acompanhando as paredes e, no meio, chão creme com pontos numa grade regular.', fn(c){
+    const C = cores(c), {cx, cy} = centro(c), bw = 1+Math.floor(c.scale/3), sp = c.inten<.34 ? 8 : c.inten<.67 ? 6 : 4, h = sp/2;
+    const cabe = (i,j)=>{ const q = j*G.cols+i; return i>=0 && j>=0 && i<G.cols && j<G.rows && G.inside[q] && c.dist[q]>=bw+4; };
     return (k,i,j)=>{
       const d = c.dist[k];
-      if(d===0) return R.light;
-      if(d===1) return (i+j)%3===0 ? R.dark[R.dark.length-1] : R.dark[0];
-      if(d>1 && d<=bw) return R.dark[1]??R.dark[0];
-      if(d===bw+1) return R.light;
-      if(d===bw+2) return (i+j)%2 ? any(c.rand,R.mid) : R.light;
-      return c.rand()<pa ? any(c.rand,R.rest) : R.light;
+      if(d<0 || d===0 || d===bw+1) return C.CR;
+      if(d===1) return (i+j)%3===0 ? C.CH : C.TE;
+      if(d<=bw) return C.FE;
+      if(d===bw+2) return (i+j)%2 ? C.PE : C.CR;
+      const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
+      if(near(dx,sp)===0 && near(dy,sp)===0 && cabe(i,j)) return C.AZ;
+      if(near(dx+h,sp)===0 && near(dy+h,sp)===0 && cabe(i,j)) return C.PE;
+      return C.CR;
     };
   }},
   losango:{label:'Losango', desc:'Losangos em degraus, um dentro do outro, alternando xadrez e azul com pontos, com contorno amarelo.', fn(c){
@@ -815,11 +844,11 @@ function distTo(tg){
 // Retângulo do tapete: no chão todo, a área livre entre a bancada e a parede do banheiro;
 // na seleção, o retângulo que a contém. Sempre com número ímpar de ladrilhos, para ter centro.
 const RUG_AREA = [70,60,466,490], RUG_MARGIN = 5;
-function rugBox(tg){
+function rugBox(tg, m=RUG_MARGIN){
   let b;
   if(tg.length===G.total){
-    b = {i0:Math.ceil((RUG_AREA[0]-G.x0)/G.p)+RUG_MARGIN, i1:Math.floor((RUG_AREA[2]-10-G.x0)/G.p)-RUG_MARGIN,
-         j0:Math.ceil((RUG_AREA[1]-G.y0)/G.p)+RUG_MARGIN, j1:Math.floor((RUG_AREA[3]-10-G.y0)/G.p)-RUG_MARGIN};
+    b = {i0:Math.ceil((RUG_AREA[0]-G.x0)/G.p)+m, i1:Math.floor((RUG_AREA[2]-10-G.x0)/G.p)-m,
+         j0:Math.ceil((RUG_AREA[1]-G.y0)/G.p)+m, j1:Math.floor((RUG_AREA[3]-10-G.y0)/G.p)-m};
   } else {
     b = {i0:1e9, i1:-1, j0:1e9, j1:-1};
     for(const k of tg){ const i = k%G.cols, j = (k/G.cols)|0; b.i0 = Math.min(b.i0,i); b.i1 = Math.max(b.i1,i); b.j0 = Math.min(b.j0,j); b.j1 = Math.max(b.j1,j); }
@@ -828,29 +857,57 @@ function rugBox(tg){
   if((b.j1-b.j0)%2) b.j1--;
   return b;
 }
-function generate(style, seed, scale, inten, quiet){
-  const tg = targets(); if(!tg.length) return;
-  if(!quiet) pushUndo();
-  let si = 0, sj = 0; for(const k of tg){ si += k%G.cols; sj += (k/G.cols)|0; }
-  const c = {rand:rng(seed), R:roles(), scale, inten:inten/100, ci:si/tg.length, cj:sj/tg.length};
+// Pinta o estilo em S.cells, sem desfazer nem salvar (a galeria usa isto para as miniaturas)
+function paint(style, v, tg){
   // a moldura das paredes conta só ladrilhos inteiros, para ter a mesma grossura em todos os lados
-  if(style==='moldura') c.dist = distTo(tg);
-  else { c.box = rugBox(tg); c.dist = distTo(tg.filter(k=>G.area[k]>=99.5)); }
+  const c = {R:roles(), scale:v.scale, inten:v.inten/100, remap:v.remap, box:rugBox(tg, style==='tapete' ? Math.max(4, Math.min(9, 10-v.scale)) : RUG_MARGIN), dist:distTo(tg.filter(k=>G.area[k]>=99.5))};
   const f = GENS[style].fn(c);
   for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
+}
+function generate(style, v, quiet){
+  const tg = targets(); if(!tg.length) return;
+  if(!quiet) pushUndo();
+  paint(style, v, tg);
   changed();
 }
 function setWhere(w){ where = w; $('whereAll').setAttribute('aria-pressed', w==='all'); $('whereSel').setAttribute('aria-pressed', w==='sel'); }
-let genStyle = 'tapete';
-$('genStyle').innerHTML = Object.entries(GENS).map(([k,g])=>`<button class="btn small" data-g="${k}" aria-pressed="false">${g.label}</button>`).join('');
-function updGen(){
-  document.querySelectorAll('[data-g]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.g===genStyle));
-  $('genDesc').textContent = GENS[genStyle].desc; $('scaleVal').textContent = $('genScale').value; $('intenVal').textContent = $('genInten').value+'%';
-}
-$('genStyle').onclick = e=>{ const b = e.target.closest('[data-g]'); if(b){ genStyle = b.dataset.g; updGen(); } };
-$('genScale').oninput = updGen; $('genInten').oninput = updGen;
 $('whereAll').onclick = ()=>setWhere('all'); $('whereSel').onclick = ()=>setWhere('sel');
-$('genBtn').onclick = ()=>generate(genStyle, (Math.random()*1e9)|0, +$('genScale').value, +$('genInten').value);
+
+/* ---------- Galeria: 6 estilos × 5 variações ---------- */
+function drawThumb(cv, style, v){
+  const w = cv.clientWidth || 180, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
+  cv.width = Math.round(w*r); cv.height = Math.round(h*r);
+  const keepCells = S.cells, keepPlan = S.plan, all = [];
+  for(let k=0;k<G.n;k++) if(G.inside[k]) all.push(k);
+  S.cells = keepCells.slice(); S.plan = false;
+  paint(style, v, all);
+  const s = w/(ROOM_W+40);
+  drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false);
+  S.cells = keepCells; S.plan = keepPlan;
+}
+function openGal(){
+  const onSel = where==='sel' && selCount()>0;
+  $('galNote').textContent = onSel ? 'Clique num desenho para aplicar só nos ladrilhos selecionados.' : 'Clique num desenho para aplicar no chão todo.';
+  $('galList').innerHTML = Object.entries(GENS).map(([k,g])=>`
+    <section class="galsty">
+      <h3>${g.label}</h3>
+      <p>${g.desc}</p>
+      <div class="cards">${VARS.map((v,n)=>`<button class="card" data-s="${k}" data-v="${n}" aria-label="${g.label}, ${v.nome}"><canvas></canvas><span>${v.nome}</span></button>`).join('')}</div>
+    </section>`).join('');
+  $('gal').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+  requestAnimationFrame(()=>$('galList').querySelectorAll('.card').forEach(b=>drawThumb(b.querySelector('canvas'), b.dataset.s, VARS[+b.dataset.v])));
+  $('galClose').focus();
+}
+function closeGal(){ $('gal').classList.add('hidden'); document.body.style.overflow = ''; $('galList').innerHTML = ''; }
+$('genBtn').onclick = openGal;
+$('galClose').onclick = closeGal;
+$('gal').onclick = e=>{
+  if(e.target===$('gal')){ closeGal(); return; }
+  const b = e.target.closest('.card'); if(!b) return;
+  const g = GENS[b.dataset.s], v = VARS[+b.dataset.v];
+  generate(b.dataset.s, v); closeGal(); toast(`${g.label} · ${v.nome} aplicado. Ctrl+Z desfaz.`);
+};
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('gal').classList.contains('hidden')) closeGal(); });
 
 /* ---------- Chão: rejunte, alinhamento ---------- */
 function updTotals(cnt){
@@ -995,7 +1052,7 @@ function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('sho
 
 /* ---------- Início ---------- */
 async function boot(){
-  buildTools(); updGen(); setWhere('all');
+  buildTools(); setWhere('all');
   let loaded = false;
   const h = location.hash.match(/^#d=([rz][\w-]+)/);
   if(h){
@@ -1012,7 +1069,7 @@ async function boot(){
     }catch(e){ setTimeout(()=>toast('O link não abriu. Mostrando o último desenho.'), 300); }
   }
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
-  if(!loaded){ regrid(null,null); generate('tapete', 1, 5, 45, true); }
+  if(!loaded){ regrid(null,null); generate('tapete', VARS[0], true); }
   syncControls(); updSel(); updPalette(); updTools(); updUndo(); renderSaved();
   new ResizeObserver(resize).observe(vp); resize();
 }
