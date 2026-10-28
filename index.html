@@ -812,43 +812,81 @@ const MOTIVOS = {
 };
 // Desenha uma grade de motivos espelhada no centro; devolve -1 onde não há motivo. cor = número ou [cor1, cor2]
 function grade(c, i, j, cx, cy, sp, motivo, cor, offset, folga, fora){
-  const M = MOTIVOS[motivo], dx = Math.abs(i-cx)+offset, dy = Math.abs(j-cy)+offset;
-  const a = near(dx,sp), b = near(dy,sp);
+  // sp e offset: um número (igual nos dois eixos) ou [horizontal, vertical]
+  const [sx, sy] = Array.isArray(sp) ? sp : [sp, sp], [ox, oy] = Array.isArray(offset) ? offset : [offset, offset];
+  const M = MOTIVOS[motivo], dx = Math.abs(i-cx)+ox, dy = Math.abs(j-cy)+oy;
+  const a = near(dx,sx), b = near(dy,sy);
   if(a>M.r || b>M.r) return -1;
   const v = M.em(a,b); if(!v) return -1;
-  const ci = i>=cx ? cx+Math.round(dx/sp)*sp-offset : cx-Math.round(dx/sp)*sp+offset;
-  const cj = j>=cy ? cy+Math.round(dy/sp)*sp-offset : cy-Math.round(dy/sp)*sp+offset;
+  const ci = i>=cx ? cx+Math.round(dx/sx)*sx-ox : cx-Math.round(dx/sx)*sx+ox;
+  const cj = j>=cy ? cy+Math.round(dy/sy)*sy-oy : cy-Math.round(dy/sy)*sy+oy;
   if(!cabe(c, ci, cj, M.r, folga, fora)) return -1;
   return Array.isArray(cor) ? cor[v-1] : cor;
 }
-// Onde pôr a grade de motivos: testa todas as posições da grade e fica com a que cabe mais motivos
-// inteiros no chão, com as sobras iguais dos dois lados. Assim a grade aproveita também o canto do L.
-function melhorCentro(c, sp, r, folga){
-  const key = `${sp}|${r}|${folga}`, memo = G.centros || (G.centros = {});
+// Como encaixar a grade de motivos na sala. Testa espaçamentos perto do desenhado (um pouco mais justo
+// ou mais folgado) e todas as posições da grade. Fica com a que deixa o maior vazio do chão mais
+// perto do vazio normal entre dois motivos: nenhum canto do L sobra, e as margens até a moldura ficam iguais.
+// rA: raio do motivo principal (null se não há); rB: raio do segundo, meio passo ao lado (null se não há).
+function melhorGrade(c, sp, rA, rB, folga, estica){
+  const key = [sp,rA,rB,folga,estica].join('|'), memo = G.grades || (G.grades = {});
   if(memo[key]) return memo[key];
-  const bb = [1e9,-1,1e9,-1];
-  for(const k of G.all) if(c.dist[k]>=folga){ const i = k%G.cols, j = (k/G.cols)|0; bb[0] = Math.min(bb[0],i); bb[1] = Math.max(bb[1],i); bb[2] = Math.min(bb[2],j); bb[3] = Math.max(bb[3],j); }
-  let best = null, bs = -Infinity;
-  for(let oy=0; oy<sp; oy++) for(let ox=0; ox<sp; ox++){
-    let n = 0; const a = [1e9,-1,1e9,-1];
-    for(let j=bb[2]+mod(oy-bb[2],sp); j<=bb[3]; j+=sp) for(let i=bb[0]+mod(ox-bb[0],sp); i<=bb[1]; i+=sp){
-      if(!cabe(c,i,j,r,folga)) continue;
-      n++; a[0] = Math.min(a[0],i-r); a[1] = Math.max(a[1],i+r); a[2] = Math.min(a[2],j-r); a[3] = Math.max(a[3],j+r);
+  const area = [], bb = [1e9,-1,1e9,-1];
+  for(const k of G.all) if(c.dist[k]>=folga){ area.push(k); const i = k%G.cols, j = (k/G.cols)|0; bb[0] = Math.min(bb[0],i); bb[1] = Math.max(bb[1],i); bb[2] = Math.min(bb[2],j); bb[3] = Math.max(bb[3],j); }
+  const inA = new Uint8Array(G.n); for(const k of area) inA[k] = 1;
+  const rmax = Math.max(rA??0, rB??0), passo = rB!=null ? 2 : 1;
+  const deltas = estica ? [0,-passo,passo] : [0];
+  const d = new Int16Array(G.n), q = new Int32Array(G.n);
+  let best = null;
+  // o mesmo passo nos dois sentidos: passo diferente na horizontal e na vertical vira listra
+  for(const ddx of deltas){
+    const ddy = ddx, sx = sp+ddx, sy = sp+ddy;
+    if(sx<2*rmax+2 || sy<2*rmax+2) continue;
+    for(let py=0; py<sy; py++) for(let px=0; px<sx; px++){
+      // pontos da grade que cabem inteiros
+      let n = 0, qn = 0; const ext = [1e9,-1,1e9,-1];
+      d.fill(-1);
+      const poe = (i,j,r)=>{
+        if(!cabe(c,i,j,r,folga)) return false;
+        const k = j*G.cols+i; if(d[k]<0){ d[k] = 0; q[qn++] = k; }
+        ext[0] = Math.min(ext[0],i-r); ext[1] = Math.max(ext[1],i+r); ext[2] = Math.min(ext[2],j-r); ext[3] = Math.max(ext[3],j+r);
+        return true;
+      };
+      for(let j=bb[2]+mod(py-bb[2],sy); j<=bb[3]; j+=sy) for(let i=bb[0]+mod(px-bb[0],sx); i<=bb[1]; i+=sx){
+        if(rA!=null && poe(i,j,rA)) n++;
+        if(rB!=null) poe(i+sx/2, j+sy/2, rB);
+      }
+      if(!qn) continue;
+      // maior vazio: distância de cada ladrilho do miolo ao ponto mais próximo
+      let vazio = 0, vistos = 0;
+      for(let h=0; h<qn; h++){
+        const k = q[h], i = k%G.cols, j = (k/G.cols)|0;
+        if(inA[k]) vistos++;
+        if(d[k]>vazio) vazio = d[k];
+        for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){
+          const ii = i+di, jj = j+dj; if(ii<0||jj<0||ii>=G.cols||jj>=G.rows) continue;
+          const y = jj*G.cols+ii; if(inA[y] && d[y]<0){ d[y] = d[k]+1; q[qn++] = y; }
+        }
+      }
+      if(vistos<area.length) vazio = 99;
+      const sc = vazio/(Math.max(sx,sy)/2)*100 + (Math.abs(ddx)+Math.abs(ddy))*4 - n*.01
+        + (Math.abs((ext[0]-bb[0])-(bb[1]-ext[1])) + Math.abs((ext[2]-bb[2])-(bb[3]-ext[3])))*.5;
+      if(!best || sc<best.sc) best = {sc, px, py, sx, sy};
     }
-    const sc = n*1000 - Math.abs((a[0]-bb[0])-(bb[1]-a[1])) - Math.abs((a[2]-bb[2])-(bb[3]-a[3]));
-    if(sc>bs){ bs = sc; best = [ox,oy]; }
   }
   // um centro da grade perto do meio da sala, para as texturas continuarem espelhadas ali
-  return memo[key] = {cx:best[0]+sp*Math.round((c.cx-best[0])/sp), cy:best[1]+sp*Math.round((c.cy-best[1])/sp)};
+  const {px, py, sx, sy} = best;
+  return memo[key] = {cx:px+sx*Math.round((c.cx-px)/sx), cy:py+sy*Math.round((c.cy-py)/sy), sx, sy};
 }
 // Treliça: linhas retas ou diagonais e/ou motivos em grade sobre um fundo. Serve também de miolo da moldura.
 function trelicaCor(c, p, folga){
   const s = p.sp, h = Math.floor(s/2);
-  // a grade se posiciona pelo motivo principal; sem ele, pelo segundo ou pelo miolo dos losangos, meio passo ao lado
-  let {cx, cy} = c;
-  if(p.motivo) ({cx, cy} = melhorCentro(c, s, MOTIVOS[p.motivo].r, folga));
-  else if(p.motivo2){ const m = melhorCentro(c, s, MOTIVOS[p.motivo2].r, folga); cx = m.cx-h; cy = m.cy-h; }
-  else if(p.dentro){ const m = melhorCentro(c, s, p.r||0, folga); cx = m.cx-h; cy = m.cy; }
+  let {cx, cy} = c, sx = s, sy = s;
+  if(p.linhas==='diag'){
+    // diagonais precisam do mesmo passo nos dois eixos: só a posição se ajusta, pelo miolo dos losangos
+    if(p.dentro){ const m = melhorGrade(c, s, p.r||0, null, folga, false); cx = m.cx-h; cy = m.cy; }
+  } else if(p.motivo || p.motivo2){
+    ({cx, cy, sx, sy} = melhorGrade(c, s, p.motivo ? MOTIVOS[p.motivo].r : null, p.motivo2 ? MOTIVOS[p.motivo2].r : null, folga, true));
+  }
   return (i,j)=>{
     const x = i-cx, y = j-cy, dx = Math.abs(x), dy = Math.abs(y);
     if(p.linhas==='diag'){
@@ -858,22 +896,23 @@ function trelicaCor(c, p, folga){
       if(p.arlequim) return C[p.arlequim[mod(Math.floor((x+y)/s)+Math.floor((x-y)/s),2)]];
     }
     if(p.linhas==='reto'){
-      const a = near(dx,s), b = near(dy,s);
+      const a = near(dx,sx), b = near(dy,sy);
       if(a===0 && b===0) return C[p.cruz||p.linha];
       if(a===0 || b===0) return C[p.linha];
     }
-    if(p.motivo){ const g = grade(c,i,j,cx,cy,s,p.motivo,[C[p.cor],C[p.corB||p.cor]],0,folga); if(g>=0) return g; }
-    if(p.motivo2){ const g = grade(c,i,j,cx,cy,s,p.motivo2,[C[p.cor2],C[p.cor2B||p.cor2]],s/2,folga); if(g>=0) return g; }
+    if(p.motivo){ const g = grade(c,i,j,cx,cy,[sx,sy],p.motivo,[C[p.cor],C[p.corB||p.cor]],0,folga); if(g>=0) return g; }
+    if(p.motivo2){ const g = grade(c,i,j,cx,cy,[sx,sy],p.motivo2,[C[p.cor2],C[p.cor2B||p.cor2]],[sx/2,sy/2],folga); if(g>=0) return g; }
     return textura(p.fundo||'creme',dx,dy);
   };
 }
 function mioloCor(c, m, folga){
   if(typeof m==='object') return trelicaCor(c, m, folga);
-  const {cx, cy} = m==='pontosAP' ? melhorCentro(c,6,0,folga) : m==='pontosTE'||m==='pontosFE' ? melhorCentro(c,4,0,folga) : c;
+  const L = m==='pontosAP' ? melhorGrade(c,6,0,0,folga,true) : m==='pontosTE'||m==='pontosFE' ? melhorGrade(c,4,0,null,folga,true) : {cx:c.cx, cy:c.cy, sx:4, sy:4};
+  const {cx, cy} = L, sp = [L.sx, L.sy];
   return (i,j)=>{
-    if(m==='pontosAP'){ const a = grade(c,i,j,cx,cy,6,'ponto',C.AZ,0,folga); if(a>=0) return a; const b = grade(c,i,j,cx,cy,6,'ponto',C.PE,3,folga); return b>=0 ? b : C.CR; }
-    if(m==='pontosTE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga); return a>=0 ? a : C.CR; }
-    if(m==='pontosFE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.FE,0,folga); return a>=0 ? a : C.CR; }
+    if(m==='pontosAP'){ const a = grade(c,i,j,cx,cy,sp,'ponto',C.AZ,0,folga); if(a>=0) return a; const b = grade(c,i,j,cx,cy,sp,'ponto',C.PE,[L.sx/2,L.sy/2],folga); return b>=0 ? b : C.CR; }
+    if(m==='pontosTE'){ const a = grade(c,i,j,cx,cy,sp,'ponto',C.TE,0,folga); return a>=0 ? a : C.CR; }
+    if(m==='pontosFE'){ const a = grade(c,i,j,cx,cy,sp,'ponto',C.FE,0,folga); return a>=0 ? a : C.CR; }
     return textura(m,Math.abs(i-cx),Math.abs(j-cy));
   };
 }
