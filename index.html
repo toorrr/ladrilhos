@@ -4,251 +4,259 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Ladrilhos da sala</title>
-<meta name="description" content="Pinte os ladrilhos 10×10 do chão da sala e experimente desenhos.">
+<meta name="description" content="Escolha o desenho e as cores dos ladrilhos 10×10 do chão da sala.">
 <style>
 :root{
-  --bg:#F3EDE2; --panel:#FBF8F3; --ink:#2A221D; --ink2:#6B5E54; --line:#E2D8C8;
-  --accent:#A8432A; --sel:#1F3F8F; --field:#FFFFFF;
+  --bg:#F3EDE2; --panel:#FBF8F3; --ink:#2A221D; --ink2:#6B5E54; --line:#E2D8C8; --soft:#EFE7DA;
+  --accent:#A8432A; --field:#FFFFFF;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
-button,input,select{font:inherit;color:inherit}
-.app{display:grid;grid-template-columns:344px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"head stage" "panels stage";height:100vh;height:100dvh}
-.head{grid-area:head;padding:24px 24px 16px;background:var(--panel);border-right:1px solid var(--line)}
-.head h1{font-size:24px;line-height:1.25;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
-.head p{margin:0;font-size:14px;color:var(--ink2)}
-.panels{grid-area:panels;overflow:auto;padding:0 24px 40px;background:var(--panel);border-right:1px solid var(--line)}
-.stage{grid-area:stage;display:flex;flex-direction:column;min-width:0;min-height:0}
-.toolbar{display:flex;flex-direction:column;gap:12px;padding:16px;border-bottom:1px solid var(--line);background:var(--bg)}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
-.group{display:flex;flex-wrap:wrap;gap:4px;align-items:flex-start}
-.sep{width:1px;height:24px;background:var(--line);margin:8px 4px 0}
-.curlabel{line-height:32px}
-.viewport{flex:1 1 auto;position:relative;min-height:0;overflow:hidden;touch-action:none;background:var(--bg)}
-.viewport canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.status{padding:8px 16px;font-size:12px;color:var(--ink2);border-top:1px solid var(--line);min-height:36px;display:flex;align-items:center}
+button,input{font:inherit;color:inherit}
+[hidden]{display:none !important}
+
+.app{display:grid;grid-template-columns:minmax(0,1fr) 416px;grid-template-rows:auto minmax(0,1fr);grid-template-areas:"top top" "stage side";height:100vh;height:100dvh}
+.top{grid-area:top;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 16px 12px 24px;background:var(--panel);border-bottom:1px solid var(--line)}
+.top h1{font-size:18px;line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+.top p{margin:2px 0 0;font-size:12px;line-height:1.5;color:var(--ink2)}
+.acts{display:flex;gap:8px;align-items:center;flex:none}
+.stage{grid-area:stage;position:relative;min-width:0;min-height:0}
+.viewport{position:absolute;inset:0;overflow:hidden}
+.viewport canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.zoom{position:absolute;right:16px;bottom:16px;display:flex;gap:4px;padding:4px;background:var(--field);border:1px solid var(--line);border-radius:12px}
+.zoom .btn{border:0;height:32px;width:32px;border-radius:8px}
+.zoom .btn:hover{background:var(--soft)}
+.side{grid-area:side;overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:16px 24px 40px}
 
 .btn{height:40px;padding:0 16px;border-radius:8px;border:1px solid var(--line);background:var(--field);font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;white-space:nowrap;line-height:1}
 .btn:hover{border-color:#CDBFA9}
-.btn:disabled{opacity:.45;cursor:default}
+.btn:disabled{opacity:.4;cursor:default}
 .btn svg{width:18px;height:18px;flex:none;display:block}
 .btn.icon{width:40px;padding:0}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
-.btn.primary:hover{background:#933920}
-.btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
-.btn.small{height:32px;padding:0 12px;font-size:14px}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
+.btn.primary:hover{background:#43372F}
+.btn.small{height:32px;padding:0 12px}
 .btn.small.icon{width:32px;padding:0}
 .btn.danger{color:#8A2A1A}
+.btn.ghost{border-color:transparent;background:none}
+.btn.ghost:hover{background:var(--soft)}
 
-.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.chip{width:32px;height:32px;border-radius:6px;border:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);cursor:pointer;padding:0;position:relative}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--soft);border-radius:12px}
+.modes button{height:40px;padding:0 12px;border:0;border-radius:8px;background:none;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.modes button svg{width:18px;height:18px;display:block}
+.modes button[aria-selected="true"]{background:var(--field);color:var(--ink);box-shadow:0 1px 2px rgba(42,34,29,.14)}
+
+.sec{padding-top:24px}
+.sec h2{font-size:14px;line-height:1.25;margin:0 0 12px;font-weight:700}
+.sec h3{font-size:12px;line-height:1.5;margin:16px 0 8px;font-weight:600;color:var(--ink2)}
+.sec h3:first-child{margin-top:0}
+.note{font-size:14px;color:var(--ink2);margin:0 0 12px}
+
+.tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:16px}
+.tabs button{height:40px;border:0;background:none;padding:0;font-size:14px;color:var(--ink2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+.tabs .cnt{font-size:12px;color:var(--ink2);font-weight:400;margin-left:4px}
+
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 12px}
+.tile{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;cursor:pointer;text-align:left;min-width:0}
+.tile canvas,.tile .upl{width:100%;aspect-ratio:611/530;display:block;border-radius:6px;background:var(--bg)}
+.tile:hover canvas,.tile:hover .upl{box-shadow:0 0 0 1px #CDBFA9}
+.tile[aria-pressed="true"] canvas{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--ink)}
+.tile .nm{font-size:12px;line-height:1.25;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile[aria-pressed="true"] .nm{color:var(--ink);font-weight:600}
+.upl{display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--ink);border:1px dashed #CDBFA9}
+.upl svg{width:24px;height:24px;display:block}
+
+.qty{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.qty div{display:flex;align-items:center;gap:8px;font-size:14px;font-variant-numeric:tabular-nums}
+.qty i{width:24px;height:24px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.16);flex:none}
+.totals{font-size:12px;color:var(--ink2);margin:12px 0 0}
+
+.toolgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.tool{height:64px;flex-direction:column;gap:4px;padding:0 4px;font-size:12px}
+.tool[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg .btn[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.inline{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
+.inline .val{font-variant-numeric:tabular-nums;color:var(--ink2)}
+.hint{font-size:12px;color:var(--ink2);margin:12px 0 0}
+
+.chip{width:32px;height:32px;border-radius:6px;border:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);cursor:pointer;padding:0}
 .chip[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:2px}
-.curlabel{font-size:12px;color:var(--ink2);margin-right:4px}
-
-.sec{padding:24px 0;border-top:1px solid var(--line)}
-.sec:first-child{border-top:0;padding-top:8px}
-.sec h2{font-size:16px;line-height:1.25;margin:0 0 4px;font-weight:700}
-.sec .note{font-size:14px;color:var(--ink2);margin:0 0 16px}
-.stack{display:flex;flex-direction:column;gap:12px}
-.wrap{display:flex;flex-wrap:wrap;gap:8px}
-
 .pal{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .palrow{display:grid;grid-template-columns:32px 1fr auto 32px 32px;gap:8px;align-items:center;min-height:40px;padding:4px 8px;border-radius:8px}
-.palrow.on{background:#F0E7D8}
-.palrow .hex{font-size:14px;font-variant-numeric:tabular-nums;color:var(--ink2);cursor:pointer}
-.palrow .cnt{font-size:14px;font-variant-numeric:tabular-nums;text-align:right}
+.palrow.on{background:var(--soft)}
+.palrow .hex{font-size:14px;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.palrow .n{font-size:14px;font-variant-numeric:tabular-nums;text-align:right}
 .edit{position:relative;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--field);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .edit svg{width:16px;height:16px;display:block}
 .edit input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
 
-label.field{display:flex;flex-direction:column;gap:4px;font-size:14px}
-label.field span{color:var(--ink2)}
-select,input[type=text]{height:40px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 12px;font-size:16px;width:100%}
+.backdrop{position:fixed;inset:0;background:rgba(42,34,29,.32);z-index:20}
+.sheet{position:fixed;z-index:21;top:72px;right:16px;width:368px;max-height:calc(100dvh - 88px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(42,34,29,.18);padding:24px}
+.sheethead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-8px -8px 8px 0}
+.sheethead h2{font-size:18px;line-height:1.25;margin:0}
+.sheet .blk{padding:16px 0;border-top:1px solid var(--line)}
+.sheet .blk:first-of-type{border-top:0;padding-top:8px}
+.sheet .blk h3{font-size:14px;margin:0 0 12px;font-weight:600}
+.stack{display:flex;flex-direction:column;gap:12px}
+.rowx{display:flex;gap:8px;align-items:center}
+.wrap{display:flex;flex-wrap:wrap;gap:8px}
+input[type=text]{height:40px;border:1px solid var(--line);border-radius:8px;background:var(--field);padding:0 12px;font-size:16px;width:100%;min-width:0}
 input[type=range]{width:100%;accent-color:var(--accent)}
-.inline{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px}
-.inline .val{font-variant-numeric:tabular-nums;color:var(--ink2)}
 .check{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;min-height:32px}
 .check input{width:18px;height:18px;accent-color:var(--accent)}
-.seg{display:flex;gap:4px;flex-wrap:wrap}
-
-.saved{display:flex;flex-direction:column;gap:8px;margin-top:16px}
-.saved .item{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:8px;border-radius:8px;background:#F0E7D8}
+.saved{display:flex;flex-direction:column;gap:8px}
+.saved .item{display:grid;grid-template-columns:64px 1fr auto;gap:12px;align-items:center;padding:8px;border-radius:8px;background:var(--soft)}
 .saved img{width:64px;height:56px;object-fit:contain;border-radius:4px;background:var(--bg);display:block}
 .saved .nm{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .saved .dt{font-size:12px;color:var(--ink2)}
-.saved .acts{display:flex;gap:4px}
-.empty{font-size:14px;color:var(--ink2);margin:16px 0 0}
-.totals{font-size:14px;color:var(--ink2);margin:0}
-.totals b{color:var(--ink);font-weight:600}
+.saved .acts2{display:flex;gap:4px}
+.empty{font-size:14px;color:var(--ink2);margin:0}
+.linkbox{margin-top:8px}
 
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;font-size:14px;padding:12px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);z-index:10}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;font-size:14px;padding:12px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);z-index:30}
 .toast.show{opacity:1;transform:translateX(-50%)}
-.gal{position:fixed;inset:0;background:rgba(42,34,29,.56);overflow:auto;z-index:20;padding:24px}
-.galbox{max-width:1080px;margin:0 auto;background:var(--panel);border-radius:12px;padding:24px}
-.galhead{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:8px}
-.galhead h2{font-size:24px;line-height:1.25;margin:0 0 4px}
-.galhead .note{font-size:14px;color:var(--ink2);margin:0}
-.galacts{display:flex;gap:8px;align-items:center}
-.steps{display:flex;gap:8px;font-size:12px;line-height:1.5;color:var(--ink2);margin-bottom:8px}
-.steps .on{color:var(--ink);font-weight:600}
-#galList{padding-top:16px}
-.cards{display:grid;gap:16px}
-.cards-1,.cards-3{grid-template-columns:repeat(3,minmax(0,1fr))}
-.cards-2{grid-template-columns:repeat(5,minmax(0,1fr))}
-.card{display:flex;flex-direction:column;gap:8px;padding:0;border:0;background:none;cursor:pointer;text-align:left}
-.card canvas{width:100%;aspect-ratio:611/530;display:block;border-radius:8px;background:var(--bg)}
-.card:hover canvas,.card:focus-visible canvas,.card:hover .upl,.card:focus-visible .upl{outline:2px solid var(--ink);outline-offset:2px}
-.upl{width:100%;aspect-ratio:611/530;border-radius:8px;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:14px;color:var(--ink)}
-.upl svg{width:32px;height:32px;display:block}
-.card .cn{font-size:14px;line-height:1.25;font-weight:600}
-.card .cs{font-size:12px;line-height:1.5;color:var(--ink2);margin-top:-4px}
-.linkbox{display:none;margin-top:8px}
-.linkbox.show{display:block}
-.hidden{display:none !important}
 
 @media (max-width:860px){
-  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"head" "stage" "panels";height:auto}
-  .head{padding:16px 16px 12px;border-right:0}
-  .panels{overflow:visible;padding:0 16px 40px;border-right:0}
-  .toolbar{padding:12px 16px}
-  .viewport{flex:none;height:auto;aspect-ratio:601/570;max-height:72svh}
-  .sep{display:none}
-  .tlabel{display:none}
-  .gal{padding:0}
-  .galbox{border-radius:0;padding:16px;min-height:100%}
-  .cards-1,.cards-2,.cards-3{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .btn.tool{width:40px;padding:0}
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"top" "stage" "side";height:auto}
+  .top{padding:12px 16px;position:sticky;top:0;z-index:5}
+  .acts{gap:4px}
+  .acts .lbl{display:none}
+  .acts .btn.lab{width:40px;padding:0}
+  .stage{height:auto;aspect-ratio:601/570;max-height:64svh}
+  .zoom{display:none}
+  .side{border-left:0;border-top:1px solid var(--line);overflow:visible;padding:16px 16px 40px}
+  .sheet{top:auto;left:0;right:0;bottom:0;width:auto;max-height:85dvh;border-radius:16px 16px 0 0;padding:24px 16px calc(24px + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
 <body>
 <div class="app">
-  <header class="head">
-    <h1>Ladrilhos da sala</h1>
-    <p id="resumo">Sala e kitchenette · ladrilhos 10×10</p>
+  <header class="top">
+    <div style="min-width:0">
+      <h1>Ladrilhos da sala</h1>
+      <p id="resumo"></p>
+    </div>
+    <div class="acts">
+      <button class="btn icon ghost" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+      <button class="btn icon ghost" id="redo" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+      <button class="btn lab" id="ajBtn" aria-label="Ajustes do chão"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg><span class="lbl">Ajustes</span></button>
+      <button class="btn primary lab" id="svBtn" aria-label="Salvar e enviar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg><span class="lbl">Salvar</span></button>
+    </div>
   </header>
 
   <main class="stage">
-    <div class="toolbar">
-      <div class="row">
-        <div class="group" id="tools"></div>
-        <div class="sep"></div>
-        <div class="group" id="sizes"></div>
-        <button class="btn hidden" id="addBtn" aria-pressed="false" title="Somar à seleção (ou segure Shift)">Somar</button>
-        <div class="sep"></div>
-        <div class="group">
-          <button class="btn icon" id="undo" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
-          <button class="btn icon" id="redo" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
-          <button class="btn tool" id="resetBtn" title="Resetar: volta o desenho, as cores e o rejunte para como a página abre" aria-label="Resetar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span class="tlabel">Resetar</span></button>
-        </div>
-        <div class="sep"></div>
-        <div class="group">
-          <button class="btn icon" id="zout" title="Afastar" aria-label="Afastar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-          <button class="btn icon" id="zfit" title="Ver o chão inteiro" aria-label="Ver o chão inteiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-          <button class="btn icon" id="zin" title="Ampliar" aria-label="Ampliar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
-        </div>
-      </div>
-      <div class="row">
-        <span class="curlabel">Cor</span>
-        <div class="chips" id="strip"></div>
-      </div>
-    </div>
     <div class="viewport" id="vp"><canvas id="cv"></canvas></div>
-    <div class="status" id="hint"></div>
+    <div class="zoom">
+      <button class="btn icon" id="zout" title="Afastar" aria-label="Afastar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+      <button class="btn icon" id="zfit" title="Ver o chão inteiro" aria-label="Ver o chão inteiro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="btn icon" id="zin" title="Ampliar" aria-label="Ampliar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5v14"/></svg></button>
+    </div>
   </main>
 
-  <aside class="panels">
-    <section class="sec">
-      <h2>Cores</h2>
-      <p class="note">Trocar uma cor aqui troca todos os ladrilhos dela.</p>
-      <div class="pal" id="pal"></div>
-      <button class="btn small" id="addColor">+ Adicionar cor</button>
-    </section>
+  <aside class="side">
+    <div class="modes" role="tablist" aria-label="Modo">
+      <button role="tab" id="mDes" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>Escolher desenho</button>
+      <button role="tab" id="mPin" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8 8-5-5z"/><path d="M7 12c-2 0-3 1.5-3 3.5S3 20 3 20s3 0 5-.5 3.5-2 3.5-3.5"/></svg>Pintar à mão</button>
+    </div>
 
-    <section class="sec">
-      <h2>Seleção</h2>
-      <p class="note" id="selInfo">Nada selecionado.</p>
-      <div class="wrap">
-        <button class="btn small" id="selAll">Selecionar o chão todo</button>
-        <button class="btn small" id="selPaint" disabled>Pintar com a cor atual</button>
-        <button class="btn small" id="selColor">Selecionar a cor atual</button>
-        <button class="btn small" id="selClear" disabled>Limpar seleção</button>
-      </div>
-    </section>
+    <div id="paneDes">
+      <section class="sec">
+        <h2>Desenho</h2>
+        <div class="tabs" role="tablist" id="tabs"></div>
+        <div id="designs"></div>
+      </section>
+      <section class="sec" id="secCores">
+        <h2 id="coresTitle">Cores</h2>
+        <div class="tiles" id="schemes"></div>
+      </section>
+      <section class="sec">
+        <h2>Quantas peças de cada cor</h2>
+        <div class="qty" id="qty"></div>
+        <p class="totals" id="totals"></p>
+      </section>
+    </div>
 
-    <section class="sec">
-      <h2>Gerar desenho</h2>
-      <p class="note">Escolha o tipo, depois o desenho e as cores. Dá para desfazer.</p>
-      <div class="stack">
-        <div class="seg" role="group" aria-label="Onde aplicar">
-          <button class="btn small" id="whereAll" aria-pressed="true">Chão todo</button>
-          <button class="btn small" id="whereSel" aria-pressed="false">Só a seleção</button>
+    <div id="panePin" hidden>
+      <section class="sec">
+        <div class="toolgrid" id="tools"></div>
+        <div id="sizesWrap" style="margin-top:16px">
+          <div class="inline" style="margin-bottom:8px"><span>Tamanho do pincel</span></div>
+          <div class="seg" id="sizes"></div>
         </div>
-        <button class="btn primary" id="genBtn">Escolher desenho</button>
-      </div>
-    </section>
-
-    <section class="sec">
-      <h2>Salvar e compartilhar</h2>
-      <p class="note">Os desenhos ficam guardados neste navegador. Para mandar a alguém, baixe a imagem ou copie o link.</p>
-      <div class="stack">
-        <div class="row" style="flex-wrap:nowrap">
-          <input type="text" id="saveName" placeholder="Nome do desenho" aria-label="Nome do desenho">
-          <button class="btn primary" id="saveBtn">Salvar</button>
-        </div>
-        <div class="wrap">
-          <button class="btn small" id="pngBtn">Baixar imagem</button>
-          <button class="btn small" id="linkBtn">Copiar link</button>
-          <button class="btn small" id="jsonBtn">Baixar arquivo</button>
-          <button class="btn small" id="openBtn">Abrir arquivo</button>
-          <input type="file" id="fileIn" accept=".json,application/json" class="hidden">
-        </div>
-        <div class="linkbox" id="linkBox"><input type="text" id="linkOut" readonly aria-label="Link do desenho"></div>
-      </div>
-      <div class="saved" id="saved"></div>
-    </section>
-
-    <section class="sec">
-      <h2>Chão</h2>
-      <p class="totals" id="totals"></p>
-      <div class="stack" style="margin-top:16px">
-        <div>
-          <div class="inline"><span>Rejunte</span><span class="val" id="groutVal"></span></div>
-          <input type="range" id="grout" min="1" max="5" step="0.5" value="2" aria-label="Largura do rejunte">
-        </div>
-        <div class="inline">
-          <span>Cor do rejunte</span>
-          <label class="edit" title="Cor do rejunte" id="groutChip"><input type="color" id="groutColor" aria-label="Cor do rejunte"></label>
-        </div>
-        <div>
-          <div class="inline" style="margin-bottom:8px"><span>Por onde começa a assentar</span></div>
-          <div class="seg" id="origin" role="group" aria-label="Por onde começa a assentar">
-            <button class="btn small" data-o="bancada" aria-pressed="true">Junto à bancada e à porta</button>
-            <button class="btn small" data-o="centro" aria-pressed="false">Centralizado</button>
-          </div>
-        </div>
-        <label class="check"><input type="checkbox" id="plan" checked> Mostrar paredes, escada e bancada</label>
-      </div>
-    </section>
+        <p class="hint" id="hint"></p>
+      </section>
+      <section class="sec">
+        <h2>Cores</h2>
+        <p class="note">Toque numa cor para pintar com ela. O lápis troca a cor em todos os ladrilhos dela.</p>
+        <div class="pal" id="pal"></div>
+        <button class="btn small" id="addColor">+ Adicionar cor</button>
+      </section>
+    </div>
   </aside>
 </div>
-<div class="gal hidden" id="gal" role="dialog" aria-modal="true" aria-labelledby="galTitle">
-  <div class="galbox">
-    <div class="galhead">
-      <div>
-        <div class="steps" id="galSteps"></div>
-        <h2 id="galTitle">Escolher desenho</h2>
-        <p class="note" id="galNote"></p>
-      </div>
-      <div class="galacts">
-        <button class="btn small hidden" id="galBack">Voltar</button>
-        <button class="btn icon" id="galClose" title="Fechar" aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-      </div>
+
+<div class="backdrop" id="backdrop" hidden></div>
+
+<div class="sheet" id="shAj" role="dialog" aria-modal="true" aria-labelledby="ajTitle" hidden>
+  <div class="sheethead"><h2 id="ajTitle">Ajustes do chão</h2><button class="btn icon ghost" data-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="blk stack">
+    <div>
+      <div class="inline"><span>Rejunte</span><span class="val" id="groutVal"></span></div>
+      <input type="range" id="grout" min="1" max="5" step="0.5" value="2" aria-label="Largura do rejunte">
     </div>
-    <div id="galList"></div>
-    <input type="file" id="imgIn" accept="image/*" class="hidden">
+    <div class="inline">
+      <span>Cor do rejunte</span>
+      <label class="edit" title="Cor do rejunte" id="groutChip"><input type="color" id="groutColor" aria-label="Cor do rejunte"></label>
+    </div>
+  </div>
+  <div class="blk">
+    <h3>Por onde começa a assentar</h3>
+    <div class="seg" id="origin" role="group" aria-label="Por onde começa a assentar">
+      <button class="btn small" data-o="bancada" aria-pressed="true">Junto à bancada e à porta</button>
+      <button class="btn small" data-o="centro" aria-pressed="false">Centralizado</button>
+    </div>
+  </div>
+  <div class="blk">
+    <label class="check"><input type="checkbox" id="plan" checked> Mostrar paredes, escada e bancada</label>
+  </div>
+  <div class="blk">
+    <button class="btn small" id="resetBtn">Voltar ao desenho inicial</button>
   </div>
 </div>
+
+<div class="sheet" id="shSv" role="dialog" aria-modal="true" aria-labelledby="svTitle" hidden>
+  <div class="sheethead"><h2 id="svTitle">Salvar e enviar</h2><button class="btn icon ghost" data-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="blk">
+    <h3>Guardar neste navegador</h3>
+    <div class="rowx">
+      <input type="text" id="saveName" placeholder="Nome do desenho" aria-label="Nome do desenho">
+      <button class="btn primary" id="saveBtn">Salvar</button>
+    </div>
+  </div>
+  <div class="blk">
+    <h3>Mandar para alguém</h3>
+    <div class="wrap">
+      <button class="btn small" id="linkBtn">Copiar link</button>
+      <button class="btn small" id="pngBtn">Baixar imagem</button>
+    </div>
+    <div class="linkbox" id="linkBox" hidden><input type="text" id="linkOut" readonly aria-label="Link do desenho"></div>
+  </div>
+  <div class="blk">
+    <h3>Desenhos salvos</h3>
+    <div class="saved" id="saved"></div>
+  </div>
+  <div class="blk">
+    <div class="wrap">
+      <button class="btn small ghost" id="jsonBtn">Baixar arquivo</button>
+      <button class="btn small ghost" id="openBtn">Abrir arquivo</button>
+    </div>
+    <input type="file" id="fileIn" accept=".json,application/json" hidden>
+  </div>
+</div>
+
+<input type="file" id="imgIn" accept="image/*" hidden>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -265,12 +273,29 @@ const BLOCKS = [
 const DOOR = [86,490];
 const FLOOR_AREA = FLOOR.reduce((a,r)=>a+(r[2]-r[0])*(r[3]-r[1]),0);
 const OUT = 255, MAX_COLORS = 12, HEX = '0123456789abcdef';
-const DEFAULT_PALETTE = ['#EFE6D3','#E7B98F','#D07A4A','#A8432A','#5E2A20','#A9C9C8','#DDB04C','#D9A193'];
 const C_BG = '#F3EDE2', C_WALL = '#3E3631', C_BLOCK = '#6F757B', C_HATCH = '#5E646A', C_LABEL = '#5A4D43', C_BLOCK_LABEL = '#FFFFFF';
-
 const DEFAULT_GROUT_COLOR = '#E2D7C3';
-const S = {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:DEFAULT_PALETTE.slice(), cells:null, plan:true};
-let G = null, sel = null, cur = 2, tool = 'pincel', brush = 1, addMode = false, where = 'all';
+
+/* ---------- Paletas: cada uma dá uma cor a cada papel do desenho ----------
+   Ordem dos papéis: CR claro · PE claro quente · TE médio · FE forte · CH escuro · AZ fundo · MO destaque · RO claro rosado */
+const ROLE = {CR:0,PE:1,TE:2,FE:3,CH:4,AZ:5,MO:6,RO:7};
+const PALETAS = [
+  {nome:'Original',      cores:['#EFE6D3','#E7B98F','#D07A4A','#A8432A','#5E2A20','#A9C9C8','#DDB04C','#D9A193']},
+  {nome:'Terra',         cores:['#EFE4D0','#E2C29A','#C9824F','#9C4A2C','#4A2A1E','#D9B98A','#B8863B','#CFA58A']},
+  {nome:'Mar',           cores:['#F1EEE6','#BFD3D6','#5F8FA3','#2F5C78','#1E2F45','#9EC2CC','#D9B45A','#E6D2C4']},
+  {nome:'Oliva',         cores:['#EEEADB','#CBD3B0','#8FA06A','#4F6B3E','#2B3A26','#B9CBB3','#C9A548','#E0C3A8']},
+  {nome:'Rosa',          cores:['#F4E9E2','#EBC3B5','#D58C7A','#A9564A','#5A2E2B','#E8B9B0','#C98E5E','#DFA7A0']},
+  {nome:'Mel',           cores:['#F3E7C9','#EBC98C','#D9A441','#A8642A','#5B3A1E','#E9D7A6','#C98B2B','#E3B98F']},
+  {nome:'Preto e branco',cores:['#F2F0EA','#D9D6CE','#9A9791','#3B3A38','#1E1E1D','#C9C6BF','#7A7772','#E3E0D8']},
+  {nome:'Marinho',       cores:['#EFE9DC','#D8CDB5','#B8893F','#22355A','#141E33','#8FA3BF','#D7B058','#C3B49A']},
+  {nome:'Tijolo e oliva',cores:['#ECE4D1','#D6C59A','#B9623F','#6B7040','#3C3A25','#A4A77A','#D2A54A','#D19A82']},
+  {nome:'Ameixa',        cores:['#F1ECE8','#D9CBD6','#9C7A98','#6A3F5E','#3A2235','#BDB4CF','#D3A85F','#E2BFC2']},
+  {nome:'Coral e menta', cores:['#F3EFE6','#F0BFA4','#E0795C','#B04A36','#3E3A36','#A9D3C2','#E6B85C','#F2C6BD']},
+  {nome:'Cinza e mostarda',cores:['#EEEDE8','#D2D0C8','#8E8C86','#55534F','#2F2E2C','#BFC3C2','#D8A535','#E2D9C5']},
+];
+
+const S = {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:PALETAS[0].cores.slice(), cells:null, plan:true, design:null};
+let G = null, cur = 0, tool = 'pincel', brush = 1, mode = 'des', tab = 'trelica';
 const V = {s:1, tx:0, ty:0, fit:1};
 const $ = id => document.getElementById(id);
 const cv = $('cv'), vp = $('vp'), ctx = cv.getContext('2d');
@@ -286,7 +311,7 @@ function buildGrid(grout, origin){
   const jmin = Math.floor((-10-ay)/p), jmax = Math.ceil((ROOM_H-ay)/p);
   const cols = imax-imin+1, rows = jmax-jmin+1, n = cols*rows;
   const x0 = ax+imin*p, y0 = ay+jmin*p;
-  const area = new Float32Array(n), inside = new Uint8Array(n);
+  const area = new Float32Array(n), inside = new Uint8Array(n), all = [];
   let total = 0, cut = 0;
   for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){
     const tx = x0+i*p, ty = y0+j*p; let a = 0;
@@ -296,9 +321,11 @@ function buildGrid(grout, origin){
     }
     const k = j*cols+i; area[k] = a;
     // sobra com menos de 3 cm não leva ladrilho: na obra ela some no rejunte e no rodapé
-    if(a>30){ inside[k] = 1; total++; if(a<99.5) cut++; }
+    if(a>30){ inside[k] = 1; total++; all.push(k); if(a<99.5) cut++; }
   }
-  return {g,p,x0,y0,cols,rows,n,area,inside,total,cut,grout,origin};
+  const Gx = {g,p,x0,y0,cols,rows,n,area,inside,total,cut,grout,origin,all};
+  Gx.dist = distTo(Gx, all.filter(k=>area[k]>=99.5));
+  return Gx;
 }
 function cellAtIn(Gx,x,y){
   const i = Math.floor((x-Gx.x0+Gx.g/2)/Gx.p), j = Math.floor((y-Gx.y0+Gx.g/2)/Gx.p);
@@ -308,22 +335,36 @@ function cellAtIn(Gx,x,y){
 // Troca rejunte/alinhamento mantendo o desenho no lugar (pelo centro de cada ladrilho)
 function regrid(fromG, fromCells){
   const NG = buildGrid(S.grout, S.origin), nc = new Uint8Array(NG.n).fill(OUT);
-  for(let k=0;k<NG.n;k++){
-    if(!NG.inside[k]) continue;
+  for(const k of NG.all){
     const i = k%NG.cols, j = (k/NG.cols)|0;
     const ok = fromG ? cellAtIn(fromG, NG.x0+i*NG.p+5, NG.y0+j*NG.p+5) : -1;
     nc[k] = ok>=0 && fromCells[ok]!==OUT ? fromCells[ok] : 0;
   }
-  G = NG; S.cells = nc; sel = new Uint8Array(G.n);
+  G = NG; S.cells = nc;
+}
+// Distância (em ladrilhos inteiros) até a parede: é o que desenha a moldura com a mesma grossura em todo lado
+function distTo(Gx, tg){
+  const inT = new Uint8Array(Gx.n); for(const k of tg) inT[k] = 1;
+  const d = new Int16Array(Gx.n).fill(-1), q = [];
+  for(const k of tg){
+    const i = k%Gx.cols, j = (k/Gx.cols)|0; let edge = false;
+    for(let dj=-1;dj<=1&&!edge;dj++) for(let di=-1;di<=1;di++){ const ii = i+di, jj = j+dj; if(ii<0||jj<0||ii>=Gx.cols||jj>=Gx.rows||!inT[jj*Gx.cols+ii]){ edge = true; break; } }
+    if(edge){ d[k] = 0; q.push(k); }
+  }
+  for(let h=0; h<q.length; h++){
+    const k = q[h], i = k%Gx.cols, j = (k/Gx.cols)|0;
+    for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){ const ii = i+di, jj = j+dj; if(ii<0||jj<0||ii>=Gx.cols||jj>=Gx.rows) continue; const y = jj*Gx.cols+ii; if(inT[y] && d[y]<0){ d[y] = d[k]+1; q.push(y); } }
+  }
+  return d;
 }
 
 /* ---------- Desfazer ---------- */
 const undoS = [], redoS = [];
-function snap(){ return {grout:S.grout, origin:S.origin, groutColor:S.groutColor, palette:S.palette.slice(), cells:S.cells.slice()}; }
+function snap(){ return {grout:S.grout, origin:S.origin, groutColor:S.groutColor, palette:S.palette.slice(), cells:S.cells.slice(), design:S.design}; }
 function restore(sn){
-  S.groutColor = sn.groutColor; S.palette = sn.palette.slice();
+  S.groutColor = sn.groutColor; S.palette = sn.palette.slice(); S.design = sn.design;
   if(sn.grout!==G.grout || sn.origin!==G.origin || sn.cells.length!==G.n){
-    S.grout = sn.grout; S.origin = sn.origin; G = buildGrid(S.grout,S.origin); sel = new Uint8Array(G.n);
+    S.grout = sn.grout; S.origin = sn.origin; G = buildGrid(S.grout,S.origin);
   }
   S.cells = sn.cells.slice();
   if(cur>=S.palette.length) cur = 0;
@@ -335,8 +376,7 @@ function redo(){ if(!redoS.length) return; undoS.push(snap()); restore(redoS.pop
 function updUndo(){ $('undo').disabled = !undoS.length; $('redo').disabled = !redoS.length; }
 
 /* ---------- Desenho na tela ---------- */
-function lum(h){ const n = parseInt(h.slice(1),16); return .2126*(n>>16&255)+.7152*(n>>8&255)+.0722*(n&255); }
-function drawScene(c, s, tx, ty, ratio, w, h, overlay, labelPx){
+function drawScene(c, s, tx, ty, ratio, w, h, overlay, labelPx, thumb){
   c.setTransform(ratio,0,0,ratio,0,0);
   c.fillStyle = C_BG; c.fillRect(0,0,w,h);
   c.setTransform(ratio*s,0,0,ratio*s,ratio*tx,ratio*ty);
@@ -353,13 +393,13 @@ function drawScene(c, s, tx, ty, ratio, w, h, overlay, labelPx){
       c.stroke(); c.restore();
     }
   }
-  // rejunte + ladrilhos, cortados pelo contorno do chão
+  // rejunte + ladrilhos, cortados pelo contorno do chão; na miniatura sem rejunte, para o desenho ler
   c.save(); c.beginPath(); for(const r of FLOOR) c.rect(r[0],r[1],r[2]-r[0],r[3]-r[1]);
   c.fillStyle = S.groutColor; c.fill(); c.clip();
-  const ts = Math.min(10, G.p-.6*px), off = (10-ts)/2;
+  const ts = thumb ? G.p+.2 : Math.min(10, G.p-.6*px), off = (10-ts)/2;
   for(let ci=0; ci<S.palette.length; ci++){
     c.fillStyle = S.palette[ci]; c.beginPath();
-    for(let k=0;k<G.n;k++){
+    for(const k of G.all){
       if(S.cells[k]!==ci) continue;
       c.rect(G.x0+(k%G.cols)*G.p+off, G.y0+((k/G.cols)|0)*G.p+off, ts, ts);
     }
@@ -372,33 +412,10 @@ function drawScene(c, s, tx, ty, ratio, w, h, overlay, labelPx){
 }
 function cellRect(i,j){ return [G.x0+i*G.p-G.g/2, G.y0+j*G.p-G.g/2]; }
 function drawOverlay(c, s){
-  const px = 1/s, p = G.p;
-  let any = false;
-  c.beginPath();
-  for(let k=0;k<G.n;k++){ if(!sel[k]) continue; any = true; const [x,y] = cellRect(k%G.cols,(k/G.cols)|0); c.rect(x,y,p,p); }
-  if(any){
-    c.fillStyle = 'rgba(31,63,143,.30)'; c.fill();
-    c.beginPath();
-    const on = (i,j)=> i>=0&&j>=0&&i<G.cols&&j<G.rows&&sel[j*G.cols+i];
-    for(let k=0;k<G.n;k++){
-      if(!sel[k]) continue;
-      const i = k%G.cols, j = (k/G.cols)|0, [x,y] = cellRect(i,j);
-      if(!on(i-1,j)){ c.moveTo(x,y); c.lineTo(x,y+p); }
-      if(!on(i+1,j)){ c.moveTo(x+p,y); c.lineTo(x+p,y+p); }
-      if(!on(i,j-1)){ c.moveTo(x,y); c.lineTo(x+p,y); }
-      if(!on(i,j+1)){ c.moveTo(x,y+p); c.lineTo(x+p,y+p); }
-    }
-    c.strokeStyle = '#1F3F8F'; c.lineWidth = 2*px; c.stroke();
-  }
-  const box = previewBox();
-  if(box){
-    const [x,y] = cellRect(box.i0,box.j0);
-    c.lineWidth = 2*px;
-    if(box.dash){ c.setLineDash([6*px,4*px]); }
-    c.strokeStyle = box.color || '#2A221D';
-    c.strokeRect(x,y,(box.i1-box.i0+1)*p,(box.j1-box.j0+1)*p);
-    c.setLineDash([]);
-  }
+  const box = previewBox(); if(!box) return;
+  const px = 1/s, p = G.p, [x,y] = cellRect(box.i0,box.j0);
+  c.lineWidth = 2*px; c.strokeStyle = '#2A221D';
+  c.strokeRect(x,y,(box.i1-box.i0+1)*p,(box.j1-box.j0+1)*p);
 }
 function drawLabels(c, s, tx, ty, ratio, fs){
   c.setTransform(ratio,0,0,ratio,0,0);
@@ -440,42 +457,47 @@ function zoomAt(f, sx, sy){
   V.s = ns; V.tx = sx-wx*ns; V.ty = sy-wy*ns; render();
 }
 
-/* ---------- Ferramentas ---------- */
+/* ---------- Modo: escolher desenho / pintar à mão ---------- */
+function setMode(m){
+  mode = m;
+  $('mDes').setAttribute('aria-selected', m==='des'); $('mPin').setAttribute('aria-selected', m==='pin');
+  $('paneDes').hidden = m!=='des'; $('panePin').hidden = m!=='pin';
+  // no celular, fora do modo pintar, o dedo rola a página em vez de pintar
+  cv.style.touchAction = m==='pin' ? 'none' : 'pan-y pinch-zoom';
+  cv.style.cursor = m==='pin' ? 'crosshair' : 'grab';
+  hover = null;
+  if(m==='des') renderTiles(true); else updTools();
+  render();
+}
+$('mDes').onclick = ()=>setMode('des'); $('mPin').onclick = ()=>setMode('pin');
+
+/* ---------- Ferramentas de pintar ---------- */
 const ICON = {
   pincel:'<path d="M15 4l5 5-8 8-5-5z"/><path d="M7 12c-2 0-3 1.5-3 3.5S3 20 3 20s3 0 5-.5 3.5-2 3.5-3.5"/>',
   retangulo:'<rect x="4" y="6" width="16" height="12" rx="1" fill="currentColor" fill-opacity=".3"/>',
-  selecao:'<rect x="4" y="6" width="16" height="12" rx="1" stroke-dasharray="3 3"/>',
-  varinha:'<path d="M4 20 15 9"/><path d="M17 3v4M15 5h4M20 10v2M19 11h2"/>',
   balde:'<path d="M5 11 12 4l7 7-7 7z"/><path d="M5 11h14"/><path d="M20 15s2 2.5 2 3.5a2 2 0 0 1-4 0c0-1 2-3.5 2-3.5z"/>',
   conta:'<path d="m14 4 6 6"/><path d="M17 7 7 17l-3 3-1-1 3-3L16 6"/><path d="m12 6 6 6"/>',
-  mover:'<path d="M12 3v18M3 12h18"/><path d="m9 6 3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/>',
 };
 const TOOLS = [
-  ['pincel','Pincel','Clique ou arraste para pintar. Escolha o tamanho do pincel ao lado.'],
-  ['retangulo','Retângulo','Arraste para pintar um bloco retangular de ladrilhos de uma vez.'],
-  ['selecao','Seleção','Arraste para selecionar vários ladrilhos. Com Shift ou “Somar”, junta à seleção.'],
-  ['varinha','Varinha','Clique num ladrilho para selecionar a mancha inteira da mesma cor.'],
-  ['balde','Balde','Clique para repintar de uma vez a mancha da mesma cor.'],
-  ['conta','Conta-gotas','Clique num ladrilho para pegar a cor dele.'],
-  ['mover','Mover','Arraste para mover o chão. No celular, dois dedos movem e ampliam.'],
+  ['pincel','Pincel','Toque ou arraste sobre o chão para pintar.'],
+  ['retangulo','Retângulo','Arraste para pintar um bloco de ladrilhos de uma vez.'],
+  ['balde','Balde','Toque numa mancha para trocar a cor dela inteira.'],
+  ['conta','Pegar cor','Toque num ladrilho para pintar com a cor dele.'],
 ];
 function svg(name){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`; }
 function buildTools(){
-  $('tools').innerHTML = TOOLS.map(([id,lab])=>`<button class="btn tool" data-tool="${id}" title="${lab}" aria-label="${lab}" aria-pressed="false">${svg(id)}<span class="tlabel">${lab}</span></button>`).join('');
+  $('tools').innerHTML = TOOLS.map(([id,lab])=>`<button class="btn tool" data-tool="${id}" aria-pressed="false">${svg(id)}<span>${lab}</span></button>`).join('');
   $('tools').onclick = e=>{ const b = e.target.closest('[data-tool]'); if(b) setTool(b.dataset.tool); };
-  $('sizes').innerHTML = [1,2,3,5].map(n=>`<button class="btn icon" data-size="${n}" title="Pincel ${n}×${n}" aria-label="Pincel ${n} por ${n}" aria-pressed="false">${n}</button>`).join('');
+  $('sizes').innerHTML = [1,2,3,5].map(n=>`<button class="btn small" data-size="${n}" aria-pressed="false">${n}×${n}</button>`).join('');
   $('sizes').onclick = e=>{ const b = e.target.closest('[data-size]'); if(b){ brush = +b.dataset.size; updTools(); } };
 }
 function setTool(t){ tool = t; updTools(); render(); }
 function updTools(){
   document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.tool===tool));
   document.querySelectorAll('[data-size]').forEach(b=>b.setAttribute('aria-pressed', +b.dataset.size===brush));
-  $('sizes').classList.toggle('hidden', tool!=='pincel');
-  $('addBtn').classList.toggle('hidden', !(tool==='selecao'||tool==='varinha'));
-  $('addBtn').setAttribute('aria-pressed', addMode);
+  $('sizesWrap').hidden = tool!=='pincel';
   const touch = matchMedia('(pointer:coarse)').matches;
-  $('hint').textContent = TOOLS.find(t=>t[0]===tool)[2] + (touch && tool!=='mover' ? ' Dois dedos movem e ampliam.' : '');
-  cv.style.cursor = tool==='mover' ? 'grab' : 'crosshair';
+  $('hint').textContent = TOOLS.find(t=>t[0]===tool)[2] + (touch ? ' Dois dedos movem e ampliam.' : ' Espaço + arrastar move o chão.');
 }
 
 function setCell(k,c){ if(k>=0 && G.inside[k] && S.cells[k]!==c){ S.cells[k] = c; return true; } return false; }
@@ -516,10 +538,8 @@ function pos(e){ const r = cv.getBoundingClientRect(); return {sx:e.clientX-r.le
 function ijAt(sx,sy){ const x = (sx-V.tx)/V.s, y = (sy-V.ty)/V.s; return {i:Math.floor((x-G.x0+G.g/2)/G.p), j:Math.floor((y-G.y0+G.g/2)/G.p)}; }
 function kOf(c){ return (c.i<0||c.j<0||c.i>=G.cols||c.j>=G.rows) ? -1 : (G.inside[c.j*G.cols+c.i] ? c.j*G.cols+c.i : -1); }
 function previewBox(){
-  if(drag && (drag.mode==='rect'||drag.mode==='select')){
-    return {i0:Math.min(drag.a.i,drag.b.i), i1:Math.max(drag.a.i,drag.b.i), j0:Math.min(drag.a.j,drag.b.j), j1:Math.max(drag.a.j,drag.b.j), dash:drag.mode==='select', color:drag.mode==='select'?'#1F3F8F':null};
-  }
-  if(hover && tool==='pincel' && !drag){
+  if(drag && drag.mode==='rect') return {i0:Math.min(drag.a.i,drag.b.i), i1:Math.max(drag.a.i,drag.b.i), j0:Math.min(drag.a.j,drag.b.j), j1:Math.max(drag.a.j,drag.b.j)};
+  if(hover && mode==='pin' && tool==='pincel' && !drag){
     const o = Math.floor((brush-1)/2); return {i0:hover.i-o, j0:hover.j-o, i1:hover.i-o+brush-1, j1:hover.j-o+brush-1};
   }
   return null;
@@ -528,9 +548,16 @@ function cancelDrag(){
   if(drag && drag.mode==='paint'){ if(drag.changed) restore(undoS.pop()); else undoS.pop(); updUndo(); }
   drag = null;
 }
+function idleCursor(){ cv.style.cursor = mode==='pin' && !spaceDown ? 'crosshair' : 'grab'; }
 cv.addEventListener('pointerdown', e=>{
+  const p = pos(e);
+  if(mode!=='pin'){
+    if(e.pointerType==='touch') return;
+    cv.setPointerCapture(e.pointerId);
+    drag = {mode:'pan', sx:p.sx, sy:p.sy, tx:V.tx, ty:V.ty}; cv.style.cursor = 'grabbing'; return;
+  }
   cv.setPointerCapture(e.pointerId);
-  const p = pos(e); pts.set(e.pointerId, p);
+  pts.set(e.pointerId, p);
   if(pts.size===2){
     cancelDrag(); const [a,b] = [...pts.values()];
     gest = {d:Math.hypot(a.sx-b.sx,a.sy-b.sy)||1, cx:(a.sx+b.sx)/2, cy:(a.sy+b.sy)/2, s:V.s, tx:V.tx, ty:V.ty};
@@ -538,13 +565,10 @@ cv.addEventListener('pointerdown', e=>{
   }
   if(pts.size>2) return;
   const c = ijAt(p.sx,p.sy), k = kOf(c);
-  if(tool==='mover' || spaceDown || e.button===1){ drag = {mode:'pan', sx:p.sx, sy:p.sy, tx:V.tx, ty:V.ty}; cv.style.cursor = 'grabbing'; return; }
+  if(spaceDown || e.button===1){ drag = {mode:'pan', sx:p.sx, sy:p.sy, tx:V.tx, ty:V.ty}; cv.style.cursor = 'grabbing'; return; }
   if(e.button!==0) return;
-  const add = e.shiftKey || e.metaKey || e.ctrlKey || addMode;
   if(tool==='pincel'){ pushUndo(); drag = {mode:'paint', last:c, changed:false}; drag.changed = paintFoot(c.i,c.j); if(drag.changed) changed(); }
   else if(tool==='retangulo'){ drag = {mode:'rect', a:c, b:c}; }
-  else if(tool==='selecao'){ drag = {mode:'select', a:c, b:c, add}; }
-  else if(tool==='varinha'){ if(k>=0){ if(!add) sel.fill(0); for(const x of region(k)) sel[x] = 1; updSel(); } else if(!add){ sel.fill(0); updSel(); } }
   else if(tool==='balde'){ if(k>=0 && S.cells[k]!==cur){ pushUndo(); for(const x of region(k)) S.cells[x] = cur; changed(); } }
   else if(tool==='conta'){ if(k>=0){ cur = S.cells[k]; updPalette(); setTool('pincel'); } }
   render();
@@ -560,7 +584,10 @@ cv.addEventListener('pointermove', e=>{
     V.s = ns; V.tx = cx-wx*ns; V.ty = cy-wy*ns; render(); return;
   }
   const c = ijAt(p.sx,p.sy);
-  if(!drag){ const nh = kOf(c)>=0 ? c : null; if(JSON.stringify(nh)!==JSON.stringify(hover)){ hover = nh; render(); } return; }
+  if(!drag){
+    if(mode!=='pin') return;
+    const nh = kOf(c)>=0 ? c : null; if(JSON.stringify(nh)!==JSON.stringify(hover)){ hover = nh; render(); } return;
+  }
   if(drag.mode==='pan'){ V.tx = drag.tx+p.sx-drag.sx; V.ty = drag.ty+p.sy-drag.sy; render(); }
   else if(drag.mode==='paint'){
     if(c.i!==drag.last.i || c.j!==drag.last.j){
@@ -569,7 +596,7 @@ cv.addEventListener('pointermove', e=>{
     }
     hover = c;
   }
-  else if(drag.mode==='rect'||drag.mode==='select'){ if(c.i!==drag.b.i||c.j!==drag.b.j){ drag.b = c; render(); } }
+  else if(drag.mode==='rect'){ if(c.i!==drag.b.i||c.j!==drag.b.j){ drag.b = c; render(); } }
 });
 function endPointer(e){
   pts.delete(e.pointerId);
@@ -578,19 +605,13 @@ function endPointer(e){
   if(drag.mode==='rect'){
     const list = []; boxCells(drag.a, drag.b, k=>{ if(S.cells[k]!==cur) list.push(k); });
     if(list.length){ pushUndo(); for(const k of list) S.cells[k] = cur; changed(); }
-  } else if(drag.mode==='select'){
-    if(!drag.add) sel.fill(0);
-    const single = drag.a.i===drag.b.i && drag.a.j===drag.b.j, k = kOf(drag.a);
-    if(single && drag.add && k>=0) sel[k] = sel[k] ? 0 : 1;
-    else boxCells(drag.a, drag.b, k=>{ sel[k] = 1; });
-    updSel();
   } else if(drag.mode==='paint'){ if(!drag.changed){ undoS.pop(); updUndo(); } }
-  else if(drag.mode==='pan'){ cv.style.cursor = tool==='mover' ? 'grab' : 'crosshair'; }
+  else if(drag.mode==='pan'){ idleCursor(); }
   drag = null; render();
 }
 cv.addEventListener('pointerup', endPointer);
 cv.addEventListener('pointercancel', e=>{ pts.delete(e.pointerId); cancelDrag(); gest = null; render(); });
-cv.addEventListener('pointerleave', ()=>{ if(!drag){ hover = null; render(); } });
+cv.addEventListener('pointerleave', ()=>{ if(!drag && hover){ hover = null; render(); } });
 vp.addEventListener('wheel', e=>{
   const p = pos(e);
   if(e.ctrlKey || e.metaKey){ e.preventDefault(); zoomAt(Math.exp(-e.deltaY*.01), p.sx, p.sy); }
@@ -600,56 +621,44 @@ $('zin').onclick = ()=>zoomAt(1.5, vp.clientWidth/2, vp.clientHeight/2);
 $('zout').onclick = ()=>zoomAt(1/1.5, vp.clientWidth/2, vp.clientHeight/2);
 $('zfit').onclick = fitView;
 $('undo').onclick = undo; $('redo').onclick = redo;
-// Volta tudo para como a página abre; os desenhos salvos ficam, e Ctrl+Z desfaz
-$('resetBtn').onclick = ()=>{
-  pushUndo();
-  Object.assign(S, {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:DEFAULT_PALETTE.slice(), plan:true});
-  G = buildGrid(S.grout, S.origin); S.cells = new Uint8Array(G.n).fill(OUT); sel = new Uint8Array(G.n);
-  const all = []; for(let k=0;k<G.n;k++) if(G.inside[k]){ S.cells[k] = 0; all.push(k); }
-  paint('tapete', GENS.tapete.vars[0], all);
-  cur = 2; setWhere('all'); setTool('pincel');
-  changed(true); fitView(); toast('Voltou ao início. Ctrl+Z desfaz.');
-};
-$('addBtn').onclick = ()=>{ addMode = !addMode; updTools(); };
 
 document.addEventListener('keydown', e=>{
   if(e.target.matches('input,select,textarea')) return;
   const k = e.key.toLowerCase();
+  if(k==='escape'){ closeSheets(); return; }
   if((e.ctrlKey||e.metaKey) && k==='z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if((e.ctrlKey||e.metaKey) && k==='y'){ e.preventDefault(); redo(); return; }
   if(e.ctrlKey||e.metaKey||e.altKey) return;
   if(k===' '){ spaceDown = true; cv.style.cursor = 'grab'; e.preventDefault(); return; }
-  const map = {b:'pincel',r:'retangulo',s:'selecao',w:'varinha',g:'balde',i:'conta',h:'mover'};
-  if(map[k]) setTool(map[k]);
-  else if(k==='escape'){ sel.fill(0); updSel(); }
+  const map = {b:'pincel',r:'retangulo',g:'balde',i:'conta'};
+  if(map[k]){ if(mode!=='pin') setMode('pin'); setTool(map[k]); }
   else if(/^[1-9]$/.test(k) && +k<=S.palette.length){ cur = +k-1; updPalette(); }
 });
-document.addEventListener('keyup', e=>{ if(e.key===' '){ spaceDown = false; updTools(); } });
+document.addEventListener('keyup', e=>{ if(e.key===' '){ spaceDown = false; idleCursor(); } });
 
 /* ---------- Cores ---------- */
-function counts(){ const c = new Array(S.palette.length).fill(0); for(let k=0;k<G.n;k++) if(G.inside[k]) c[S.cells[k]]++; return c; }
+function counts(){ const c = new Array(S.palette.length).fill(0); for(const k of G.all) c[S.cells[k]]++; return c; }
 const fmt = n => n.toLocaleString('pt-BR');
 const PEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
 const XS = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
 function updPalette(){
   const cnt = counts();
-  $('strip').innerHTML = S.palette.map((h,i)=>`<button class="chip" data-c="${i}" style="background:${h}" aria-pressed="${i===cur}" title="Cor ${i+1} (tecla ${i+1})" aria-label="Cor ${i+1}"></button>`).join('');
   $('pal').innerHTML = S.palette.map((h,i)=>`
     <div class="palrow${i===cur?' on':''}">
-      <button class="chip" data-c="${i}" style="background:${h}" aria-pressed="${i===cur}" aria-label="Usar cor ${i+1}"></button>
-      <span class="hex" data-c="${i}">${h.toUpperCase()}</span>
-      <span class="cnt">${fmt(cnt[i])}</span>
-      <label class="edit" title="Mudar esta cor">${PEN}<input type="color" value="${h}" data-edit="${i}" aria-label="Mudar a cor ${i+1}"></label>
-      <button class="btn small icon" data-del="${i}" title="Tirar esta cor" aria-label="Tirar a cor ${i+1}" ${S.palette.length<=2?'disabled':''}>${XS}</button>
+      <button class="chip" data-c="${i}" style="background:${h}" aria-pressed="${i===cur}" aria-label="Pintar com a cor ${i+1}"></button>
+      <span class="hex">${h.toUpperCase()}</span>
+      <span class="n">${fmt(cnt[i])}</span>
+      <label class="edit" title="Trocar esta cor">${PEN}<input type="color" value="${h}" data-edit="${i}" aria-label="Trocar a cor ${i+1}"></label>
+      <button class="btn small icon ghost" data-del="${i}" title="Tirar esta cor" aria-label="Tirar a cor ${i+1}" ${S.palette.length<=2?'disabled':''}>${XS}</button>
     </div>`).join('');
   $('addColor').disabled = S.palette.length>=MAX_COLORS;
-  updTotals(cnt);
+  $('qty').innerHTML = S.palette.map((h,i)=>[h,cnt[i]]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1])
+    .map(([h,n])=>`<div><i style="background:${h}"></i>${fmt(n)}</div>`).join('');
+  updTotals();
 }
-function onPick(e){ const b = e.target.closest('[data-c]'); if(b){ cur = +b.dataset.c; updPalette(); if(tool==='conta'||tool==='mover') setTool('pincel'); } }
-$('strip').onclick = onPick; $('pal').onclick = e=>{
-  const d = e.target.closest('[data-del]');
-  if(d){ delColor(+d.dataset.del); return; }
-  onPick(e);
+$('pal').onclick = e=>{
+  const d = e.target.closest('[data-del]'); if(d){ delColor(+d.dataset.del); return; }
+  const b = e.target.closest('[data-c]'); if(b){ cur = +b.dataset.c; updPalette(); if(tool==='conta') setTool('pincel'); }
 };
 let editing = false;
 $('pal').addEventListener('input', e=>{
@@ -659,7 +668,6 @@ $('pal').addEventListener('input', e=>{
   const row = e.target.closest('.palrow');
   row.querySelector('.chip').style.background = e.target.value;
   row.querySelector('.hex').textContent = e.target.value.toUpperCase();
-  const sc = $('strip').querySelector(`[data-c="${i}"]`); if(sc) sc.style.background = e.target.value;
   render(); save();
 });
 $('pal').addEventListener('change', e=>{ if(e.target.dataset.edit!==undefined){ editing = false; updPalette(); } });
@@ -667,7 +675,7 @@ function delColor(i){
   const n = counts()[i], to = i===0 ? 1 : 0;
   if(n && !confirm(`${fmt(n)} ladrilhos têm esta cor. Eles passam para a cor ${to+1}. Continuar?`)) return;
   pushUndo();
-  for(let k=0;k<G.n;k++){ if(!G.inside[k]) continue; let c = S.cells[k]; if(c===i) c = to; S.cells[k] = c>i ? c-1 : c; }
+  for(const k of G.all){ let c = S.cells[k]; if(c===i) c = to; S.cells[k] = c>i ? c-1 : c; }
   S.palette.splice(i,1);
   if(cur===i) cur = 0; else if(cur>i) cur--;
   changed(true);
@@ -675,58 +683,27 @@ function delColor(i){
 $('addColor').onclick = ()=>{
   if(S.palette.length>=MAX_COLORS) return;
   pushUndo();
-  const pool = ['#7FA39A','#C9A27E','#E9D7B7','#8E5B4A','#B7C7D9','#F0C9A0'];
+  const pool = PALETAS.flatMap(p=>p.cores);
   S.palette.push(pool.find(h=>!S.palette.includes(h)) || '#999999');
   cur = S.palette.length-1; changed(true);
   const inp = $('pal').querySelector(`[data-edit="${cur}"]`); if(inp) inp.click();
 };
-
-/* ---------- Seleção ---------- */
-function selCount(){ let n = 0; for(let k=0;k<G.n;k++) n += sel[k]; return n; }
-function updSel(){
-  const n = selCount();
-  $('selInfo').textContent = n ? `${fmt(n)} ladrilho${n>1?'s':''} selecionado${n>1?'s':''}.` : 'Nada selecionado. Use a Seleção ou a Varinha na barra de cima.';
-  $('selPaint').disabled = !n; $('selClear').disabled = !n;
-  $('whereSel').disabled = !n;
-  if(!n && where==='sel') setWhere('all');
-  render();
+// Une cores repetidas e tira as que o desenho não usa: a lista de cores vira a lista de compra
+function compactar(){
+  const cnt = counts(), idx = new Map(), np = [], map = [];
+  S.palette.forEach((h,ci)=>{ if(!cnt[ci]) return; const key = h.toUpperCase(); if(!idx.has(key)){ idx.set(key,np.length); np.push(h); } map[ci] = idx.get(key); });
+  for(const k of G.all) S.cells[k] = map[S.cells[k]];
+  S.palette = np;
+  if(cur>=np.length) cur = 0;
 }
-$('selAll').onclick = ()=>{ for(let k=0;k<G.n;k++) sel[k] = G.inside[k]; updSel(); };
-$('selClear').onclick = ()=>{ sel.fill(0); updSel(); };
-$('selColor').onclick = ()=>{ sel.fill(0); for(let k=0;k<G.n;k++) if(G.inside[k] && S.cells[k]===cur) sel[k] = 1; updSel(); };
-$('selPaint').onclick = ()=>{ pushUndo(); for(let k=0;k<G.n;k++) if(sel[k]) S.cells[k] = cur; changed(); };
 
 /* ---------- Gerador ---------- */
-function roles(){
-  const o = S.palette.map((_,i)=>i).sort((a,b)=>lum(S.palette[b])-lum(S.palette[a]));
-  const nd = o.length>=6 ? 3 : Math.max(1, Math.floor(o.length/2));
-  const dark = o.slice(-nd), mid = o.slice(1, o.length-nd);
-  return {o, light:o[0], rest:o.slice(1), dark, mid:mid.length?mid:dark};
-}
-// Cores pelo papel que têm nas fotos; se a paleta tiver menos cores, usa as que existem.
-// O esquema de cores troca um papel por outro (ex.: onde era azul, vira pêssego).
-function cores(c){
-  const P = S.palette.length, ix = n=>n<P ? n : c.R.rest[n%c.R.rest.length] ?? 0;
-  const [CR,PE,TE,FE,CH,AZ,MO,RO] = [0,1,2,3,4,5,6,7].map(ix);
-  const base = {CR,PE,TE,FE,CH,AZ,MO,RO}, C = {...base};
-  for(const [papel, outro] of Object.entries(c.remap||{})) C[papel] = base[outro];
-  return C;
-}
-function centro(c){ return {cx:(c.box.i0+c.box.i1)/2, cy:(c.box.j0+c.box.j1)/2}; }
+const C = ROLE;
 const near = (a,m)=>Math.min(a%m, m-a%m);
-
-// Esquemas de cor: valem para qualquer desenho
-const ESQUEMAS = [
-  {nome:'Original', desc:'As cores das fotos', remap:{}},
-  {nome:'Terra', desc:'Sem azul, linhas chocolate', remap:{AZ:'PE', MO:'CH'}},
-  {nome:'Rosa', desc:'Fundo rosa, chocolate e terracota', remap:{FE:'CH', TE:'RO', AZ:'RO', MO:'TE'}},
-  {nome:'Mar', desc:'Azul e chocolate', remap:{TE:'AZ', FE:'CH', PE:'AZ', MO:'CR', AZ:'AZ'}},
-  {nome:'Mel', desc:'Amarelo, pêssego e ferrugem', remap:{AZ:'PE', TE:'MO', MO:'FE'}},
-  {nome:'Contraste', desc:'Só chocolate e creme', remap:{AZ:'CR', TE:'CR', PE:'CR', FE:'CH', MO:'CH', RO:'CR'}},
-];
+const mod = (a,m)=>((a%m)+m)%m;
 
 // Texturas de preenchimento, sempre medidas a partir do centro (dx, dy >= 0), por isso espelhadas
-function textura(nome, C, dx, dy){
+function textura(nome, dx, dy){
   switch(nome){
     case 'xadrez': return (dx+dy)%2 ? C.TE : C.FE;
     case 'xadrezGrande': return (Math.floor((dx+1)/2)+Math.floor((dy+1)/2))%2 ? C.TE : C.FE;
@@ -739,26 +716,42 @@ function textura(nome, C, dx, dy){
     case 'azul': return C.AZ;
     case 'terracota': return C.TE;
     case 'ferrugem': return C.FE;
+    case 'chocolate': return C.CH;
   }
   return C.CR;
 }
 
-// Moldura das paredes: uma cor por anel, contando só ladrilhos inteiros; os cortes ficam creme.
-// Fichas especiais: TEdot (terracota com chocolate a cada 3), PEalt (pêssego e creme alternados), XZ (amarelo e creme alternados)
-const MOLDURAS = {
-  nenhuma: [],
-  fina: ['TE','CR','FE'],
-  dupla: ['TE','CR','FE','CR','MO'],
-};
-function anelMoldura(c, k, i, j, spec, C){
+// Moldura das paredes: um item por anel, contando só ladrilhos inteiros; os cortes ficam creme.
+// Item texto = anel de uma cor (ou TEdot, PEalt, XZ). Item objeto = faixa de w anéis com desenho
+// ao longo da parede (dentes, xadrez, cruzes, losangos). '_' deixa ver o miolo.
+const MOLDURAS = {fina:['TE','CR','FE'], dupla:['TE','CR','FE','CR','MO']};
+function aneis(spec){ const out = []; for(const it of spec){ if(typeof it==='string') out.push({it, r:0}); else for(let r=0;r<it.w;r++) out.push({it, r}); } return out; }
+// posição ao longo da parede mais próxima, espelhada no centro
+function tangente(c, k, i, j){
+  const up = j>0 ? c.dist[k-G.cols] : -1, dn = j<G.rows-1 ? c.dist[k+G.cols] : -1;
+  return up!==dn ? Math.abs(i-c.cx) : Math.abs(j-c.cy);
+}
+function corAnel(c, a, k, i, j){
+  const it = a.it;
+  if(typeof it==='string'){
+    if(it==='TEdot') return (i+j)%3===0 ? C.CH : C.TE;
+    if(it==='PEalt') return (i+j)%2 ? C.PE : C.CR;
+    if(it==='XZ') return (i+j)%2 ? C.MO : C.CR;
+    return C[it];
+  }
+  const t = tangente(c,k,i,j), r = a.r, w = it.w, A = C[it.a], B = C[it.b];
+  if(it.t==='dentes'){ const P = 2*w, m = t%P, tri = Math.min(m, P-m); return r < w-tri ? A : B; }
+  if(it.t==='xadrez') return (t+r)%2 ? A : B;
+  if(it.t==='cruzes'){ const m = near(t,4); return (r===1 && m<=1) || m===0 ? A : B; }
+  if(it.t==='losangos'){ const m = near(t,4); return Math.abs(r-1)+m<=1 ? A : B; }
+  return A;
+}
+function anelMoldura(c, k, i, j, spec){
   const w = c.dist[k];
   if(w<0) return C.CR;
   if(w>=spec.length) return -1;
-  const r = spec[w];
-  if(r==='TEdot') return (i+j)%3===0 ? C.CH : C.TE;
-  if(r==='PEalt') return (i+j)%2 ? C.PE : C.CR;
-  if(r==='XZ') return (i+j)%2 ? C.MO : C.CR;
-  return C[r];
+  const a = spec[w];
+  return a.it==='_' ? -1 : corAnel(c,a,k,i,j);
 }
 // motivo de raio r centrado em (i,j): todo no chão e a 'folga' anéis da parede; 'fora' recusa uma área
 function cabe(c, i, j, r, folga, fora){
@@ -769,27 +762,110 @@ function cabe(c, i, j, r, folga, fora){
   }
   return true;
 }
-// Motivos de grade: a (horizontal) e b (vertical) são as distâncias ao centro do motivo
+// Motivos de grade: a (horizontal) e b (vertical) são as distâncias ao centro do motivo.
+// Devolvem 0 (fora), 1 (cor principal) ou 2 (segunda cor).
 const MOTIVOS = {
-  ponto:{r:0, em:(a,b)=>a===0&&b===0},
-  cruz:{r:1, em:(a,b)=>(a===0&&b<=1)||(b===0&&a<=1)},
-  quadrado:{r:1, em:(a,b)=>a<=1&&b<=1},
-  xis:{r:1, em:(a,b)=>a===b},
-  losango:{r:2, em:(a,b)=>a+b<=2},
-  anel:{r:2, em:(a,b)=>Math.max(a,b)===2},
+  ponto:{r:0, em:(a,b)=>a===0&&b===0?1:0},
+  cruz:{r:1, em:(a,b)=>(a===0&&b<=1)||(b===0&&a<=1)?1:0},
+  quadrado:{r:1, em:(a,b)=>1},
+  xis:{r:1, em:(a,b)=>a===b?1:0},
+  losango:{r:2, em:(a,b)=>a+b<=2?1:0},
+  anel:{r:2, em:(a,b)=>Math.max(a,b)===2?1:0},
+  flor:{r:1, em:(a,b)=>a+b===0?2:a+b===1?1:0},
+  estrela:{r:2, em:(a,b)=>a+b===0?2:(a===0||b===0||a===b)?1:0},
+  anelP:{r:2, em:(a,b)=>Math.max(a,b)===2?1:a+b===0?2:0},
+  xisG:{r:2, em:(a,b)=>a===b?(a===0?2:1):0},
+  medalhao:{r:3, em:(a,b)=>Math.max(a,b)===3?1:a+b<=2?(a+b===0?1:2):0},
 };
-// Desenha uma grade de motivos espelhada no centro; devolve -1 onde não há motivo
+// Desenha uma grade de motivos espelhada no centro; devolve -1 onde não há motivo. cor = número ou [cor1, cor2]
 function grade(c, i, j, cx, cy, sp, motivo, cor, offset, folga, fora){
   const M = MOTIVOS[motivo], dx = Math.abs(i-cx)+offset, dy = Math.abs(j-cy)+offset;
   const a = near(dx,sp), b = near(dy,sp);
-  if(a>M.r || b>M.r || !M.em(a,b)) return -1;
+  if(a>M.r || b>M.r) return -1;
+  const v = M.em(a,b); if(!v) return -1;
   const ci = i>=cx ? cx+Math.round(dx/sp)*sp-offset : cx-Math.round(dx/sp)*sp+offset;
   const cj = j>=cy ? cy+Math.round(dy/sp)*sp-offset : cy-Math.round(dy/sp)*sp+offset;
-  return cabe(c, ci, cj, M.r, folga, fora) ? cor : -1;
+  if(!cabe(c, ci, cj, M.r, folga, fora)) return -1;
+  return Array.isArray(cor) ? cor[v-1] : cor;
+}
+// Treliça: linhas retas ou diagonais e/ou motivos em grade sobre um fundo. Serve também de miolo da moldura.
+function trelicaCor(c, p, folga){
+  const {cx, cy} = c, s = p.sp;
+  return (i,j)=>{
+    const x = i-cx, y = j-cy, dx = Math.abs(x), dy = Math.abs(y);
+    if(p.linhas==='diag'){
+      const u = mod(x+y,s), v = mod(x-y,s);
+      if(u===0 || v===0) return C[p.linha];
+      if(p.dentro && Math.max(Math.abs(u-s/2), Math.abs(v-s/2))<=(p.r||0)) return C[p.dentro];
+      if(p.arlequim) return C[p.arlequim[mod(Math.floor((x+y)/s)+Math.floor((x-y)/s),2)]];
+    }
+    if(p.linhas==='reto'){
+      const a = near(dx,s), b = near(dy,s);
+      if(a===0 && b===0) return C[p.cruz||p.linha];
+      if(a===0 || b===0) return C[p.linha];
+    }
+    if(p.motivo){ const g = grade(c,i,j,cx,cy,s,p.motivo,[C[p.cor],C[p.corB||p.cor]],0,folga); if(g>=0) return g; }
+    if(p.motivo2){ const g = grade(c,i,j,cx,cy,s,p.motivo2,[C[p.cor2],C[p.cor2B||p.cor2]],s/2,folga); if(g>=0) return g; }
+    return textura(p.fundo||'creme',dx,dy);
+  };
+}
+function mioloCor(c, m, folga){
+  if(typeof m==='object') return trelicaCor(c, m, folga);
+  const {cx, cy} = c;
+  return (i,j)=>{
+    if(m==='pontosAP'){ const a = grade(c,i,j,cx,cy,6,'ponto',C.AZ,0,folga); if(a>=0) return a; const b = grade(c,i,j,cx,cy,6,'ponto',C.PE,3,folga); return b>=0 ? b : C.CR; }
+    if(m==='pontosTE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga); return a>=0 ? a : C.CR; }
+    if(m==='pontosFE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.FE,0,folga); return a>=0 ? a : C.CR; }
+    return textura(m,Math.abs(i-cx),Math.abs(j-cy));
+  };
 }
 
 const GENS = {
-  tapete:{label:'Tapete', desc:'Um tapete no meio da sala, com faixa de borda, miolo e um desenho no centro.',
+  trelica:{label:'Treliça',
+    vars:[
+      {nome:'Cruzes', sp:6, motivo:'cruz', cor:'FE', motivo2:'ponto', cor2:'CR', fundo:'azul'},
+      {nome:'Treliça', linhas:'diag', sp:6, linha:'FE', dentro:'MO', fundo:'pessego'},
+      {nome:'Flores', sp:6, motivo:'flor', cor:'TE', corB:'MO', motivo2:'ponto', cor2:'AZ', fundo:'creme'},
+      {nome:'Arlequim', linhas:'diag', sp:6, linha:'FE', arlequim:['AZ','CR']},
+      {nome:'Estrelas', sp:8, motivo:'estrela', cor:'FE', corB:'MO', motivo2:'ponto', cor2:'TE', fundo:'pessego'},
+      {nome:'Quadriculado', linhas:'reto', sp:6, linha:'FE', cruz:'MO', motivo2:'ponto', cor2:'TE', fundo:'creme'},
+      {nome:'Medalhões', sp:12, motivo:'medalhao', cor:'CH', corB:'TE', motivo2:'flor', cor2:'FE', cor2B:'MO', fundo:'creme'},
+      {nome:'Treliça larga', linhas:'diag', sp:10, linha:'CH', dentro:'TE', r:1, fundo:'creme'},
+      {nome:'Losangos', sp:10, motivo:'losango', cor:'FE', motivo2:'cruz', cor2:'MO', fundo:'azul'},
+      {nome:'Escamas', sp:6, motivo:'losango', cor:'TE', motivo2:'losango', cor2:'FE', fundo:'creme'},
+      {nome:'Anéis', sp:6, motivo:'anelP', cor:'MO', corB:'FE', fundo:'azul'},
+      {nome:'Xis', sp:6, motivo:'xisG', cor:'CH', corB:'MO', motivo2:'ponto', cor2:'TE', fundo:'pessego'},
+      {nome:'Noturno', sp:6, motivo:'cruz', cor:'CR', motivo2:'ponto', cor2:'MO', fundo:'chocolate'},
+      {nome:'Sobre xadrez', sp:8, motivo:'losango', cor:'CR', motivo2:'ponto', cor2:'MO', fundo:'xadrez'},
+      {nome:'Pontilhado', sp:3, motivo:'ponto', cor:'FE', fundo:'creme'},
+    ],
+    fn(c, p){
+      const FR = aneis(MOLDURAS.fina), sub = trelicaCor(c, p, FR.length+1);
+      return (k,i,j)=>{ const f = anelMoldura(c,k,i,j,FR); return f>=0 ? f : sub(i,j); };
+    }},
+  moldura:{label:'Moldura',
+    vars:[
+      {nome:'Com cruzes', anel:['TE','CR','FE','CR'], miolo:{sp:6, motivo:'cruz', cor:'FE', motivo2:'ponto', cor2:'CR', fundo:'azul'}},
+      {nome:'Larga', anel:['CR','TEdot','FE','FE','CR','PEalt'], miolo:'pontosAP'},
+      {nome:'Dentes', anel:['FE',{t:'dentes',w:4,a:'TE',b:'CR'},'FE','CR'], miolo:'creme'},
+      {nome:'Com treliça', anel:['FE','FE','CR'], miolo:{linhas:'diag', sp:6, linha:'TE', dentro:'MO', fundo:'creme'}},
+      {nome:'Passe-partout', anel:['CH','CH','CH','CH','MO','CR'], miolo:'creme'},
+      {nome:'Xadrez', anel:['CH',{t:'xadrez',w:2,a:'MO',b:'CR'},'CH','CR'], miolo:'pontosFE'},
+      {nome:'Faixa de cruzes', anel:['FE','CR',{t:'cruzes',w:3,a:'FE',b:'PE'},'CR','FE'], miolo:'azul'},
+      {nome:'Com flores', anel:['FE','CR','MO','CR'], miolo:{sp:6, motivo:'flor', cor:'TE', corB:'MO', fundo:'pessego'}},
+      {nome:'Dupla', anel:['FE','TE','CR','_','_','_','TE','CR'], miolo:'pessego'},
+      {nome:'Losangos', anel:['CH','CR',{t:'losangos',w:3,a:'TE',b:'CR'},'CR','CH'], miolo:'cremePontos'},
+      {nome:'Fina', anel:['TE','CR','FE'], miolo:'pontosTE'},
+      {nome:'Com arlequim', anel:['CH','CR','CH'], miolo:{linhas:'diag', sp:6, linha:'CH', arlequim:['TE','PE']}},
+      {nome:'Três linhas', anel:['MO','CR','FE','CR','MO','CR','FE'], miolo:'creme'},
+      {nome:'Bem larga', anel:['FE','FE','TEdot','FE','FE','CR','MO'], miolo:'azul'},
+      {nome:'Pontilhada', anel:['CR','TEdot','CR','TEdot'], miolo:'pontosAP'},
+    ],
+    fn(c, p){
+      const A = aneis(p.anel), mi = mioloCor(c, p.miolo, A.length+2);
+      return (k,i,j)=>{ const f = anelMoldura(c,k,i,j,A); return f>=0 ? f : mi(i,j); };
+    }},
+  tapete:{label:'Tapete', outro:true,
     vars:[
       {nome:'Clássico', m:5, borda:'cruzes', campo:'xadrez', centro:'losango', D:7, fora:'cruzes', moldura:'fina'},
       {nome:'Grande', m:4, borda:'cruzes', campo:'xadrez', centro:'losango', D:10, fora:'azul', moldura:'fina'},
@@ -797,23 +873,18 @@ const GENS = {
       {nome:'Dentes', m:5, borda:'dentes', campo:'xadrez', centro:'quadrados', D:9, fora:'creme', moldura:'fina'},
       {nome:'Medalhão', m:5, borda:'linhas', campo:'xadrezGrande', centro:'medalhao', D:9, fora:'cruzes', moldura:'fina'},
       {nome:'Borda xadrez', m:5, borda:'xadrez', campo:'azulPontos', centro:'losango', D:8, fora:'creme', moldura:'dupla'},
-      {nome:'Limpo', m:6, borda:'linhas', campo:'creme', centro:'losango', D:6, fora:'azul', moldura:'fina'},
-      {nome:'Quadrados', m:4, borda:'cruzes', campo:'azulPontos', centro:'quadrados', D:12, fora:'creme', moldura:'fina'},
-      {nome:'Sem centro', m:5, borda:'dentes', campo:'xadrez', centro:'nenhum', D:0, fora:'cruzes', moldura:'fina'},
-      {nome:'Pêssego', m:4, borda:'cruzes', campo:'pessegoPontos', centro:'medalhao', D:10, fora:'azul', moldura:'dupla'},
     ],
     fn(c, p){
-      const C = cores(c), {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
-      const FR = MOLDURAS[p.moldura], BW = p.borda==='linhas'||p.borda==='xadrez' ? 5 : 7;
+      const {i0:L, i1:R, j0:T, j1:B} = c.box, cx = (L+R)/2, cy = (T+B)/2;
+      const FR = aneis(MOLDURAS[p.moldura]), BW = p.borda==='linhas'||p.borda==='xadrez' ? 5 : 7;
       const maxD = Math.min(R-L, B-T)/2-BW-1, D = Math.max(2, Math.min(maxD, p.D));
       const foraTapete = (x,y)=>x>=L-2 && x<=R+2 && y>=T-2 && y<=B+2, folga = FR.length+2;
       return (k,i,j)=>{
         const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
         if(i<L || i>R || j<T || j>B){
-          const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+          const f = anelMoldura(c,k,i,j,FR); if(f>=0) return f;
           if(p.fora==='azul') return C.AZ;
           if(p.fora==='creme') return C.CR;
-          if(p.fora==='pontos'){ const g = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga,foraTapete); return g>=0 ? g : C.CR; }
           const g = grade(c,i,j,cx,cy,6,'cruz',C.FE,0,folga,foraTapete); if(g>=0) return g;
           const g2 = grade(c,i,j,cx,cy,6,'ponto',C.CR,3,folga,foraTapete); return g2>=0 ? g2 : C.AZ;
         }
@@ -840,7 +911,7 @@ const GENS = {
           const d = dx+dy;
           if(d===D) return C.MO;
           if(d===D+1) return C.CR;
-          if(d<D) return d<=1 ? C.FE : d===2 ? C.MO : textura('azulPontos',C,dx,dy);
+          if(d<D) return d<=1 ? C.FE : d===2 ? C.MO : textura('azulPontos',dx,dy);
         }
         if(p.centro==='quadrados'){
           const q = Math.max(dx,dy);
@@ -849,179 +920,190 @@ const GENS = {
         }
         if(p.centro==='medalhao'){
           const w = Math.max(1, Math.round(D/3)), dentro = (x,y)=>(x<=w && y<=D) || (y<=w && x<=D);
-          if(dentro(dx,dy)) return !dentro(dx+1,dy) || !dentro(dx,dy+1) ? C.MO : textura('azulPontos',C,dx,dy);
+          if(dentro(dx,dy)) return !dentro(dx+1,dy) || !dentro(dx,dy+1) ? C.MO : textura('azulPontos',dx,dy);
           if(dentro(Math.max(0,dx-1),dy) || dentro(dx,Math.max(0,dy-1))) return C.CR;
         }
-        return textura(p.campo,C,dx,dy);
+        return textura(p.campo,dx,dy);
       };
     }},
-  moldura:{label:'Moldura', desc:'Uma faixa acompanhando as paredes e o meio da sala mais calmo.',
-    vars:[
-      {nome:'Larga', anel:['CR','TEdot','FE','FE','CR','PEalt'], miolo:'pontosAP'},
-      {nome:'Fina', anel:['TE','CR','FE'], miolo:'pontosTE'},
-      {nome:'Dupla', anel:['FE','CR','MO','CR','FE'], miolo:'creme'},
-      {nome:'Xadrez', anel:['FE','XZ','XZ','FE'], miolo:'azulPontos'},
-      {nome:'Bem larga', anel:['FE','FE','TEdot','FE','FE','CR','MO'], miolo:'azul'},
-      {nome:'Azul', anel:['AZ','CR','AZ','CR','FE'], miolo:'pontosFE'},
-      {nome:'Terracota', anel:['TE','TE','TE','CR','TEdot'], miolo:'pessegoPontos'},
-      {nome:'Três linhas', anel:['MO','CR','FE','CR','MO','CR','FE'], miolo:'creme'},
-      {nome:'Pêssego', anel:['FE','PEalt','PEalt','PEalt','FE','CR','MO'], miolo:'azulPontos'},
-      {nome:'Pontilhada', anel:['CR','TEdot','CR','TEdot'], miolo:'pontosAP'},
-    ],
-    fn(c, p){
-      const C = cores(c), {cx, cy} = centro(c), folga = p.anel.length+2;
-      return (k,i,j)=>{
-        const f = anelMoldura(c,k,i,j,p.anel,C); if(f>=0) return f;
-        const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
-        if(p.miolo==='pontosAP'){ const a = grade(c,i,j,cx,cy,6,'ponto',C.AZ,0,folga); if(a>=0) return a; const b = grade(c,i,j,cx,cy,6,'ponto',C.PE,3,folga); return b>=0 ? b : C.CR; }
-        if(p.miolo==='pontosTE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga); return a>=0 ? a : C.CR; }
-        if(p.miolo==='pontosFE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.FE,0,folga); return a>=0 ? a : C.CR; }
-        return textura(p.miolo,C,dx,dy);
-      };
-    }},
-  losango:{label:'Losango', desc:'Losangos em degraus, um dentro do outro, separados por linhas.',
+  losango:{label:'Losango', outro:true,
     vars:[
       {nome:'Clássico', step:6, sx:1, faixas:['xadrez','azulPontos'], linha:'MO'},
       {nome:'Largo', step:9, sx:1, faixas:['xadrez','azulPontos'], linha:'MO', dupla:true},
-      {nome:'Estreito', step:4, sx:1, faixas:['xadrez','creme'], linha:'FE'},
       {nome:'Achatado', step:6, sx:2, faixas:['xadrez','azulPontos'], linha:'MO'},
-      {nome:'Três texturas', step:6, sx:1, faixas:['xadrez','azulPontos','pessego'], linha:'MO'},
       {nome:'Cores lisas', step:5, sx:1, faixas:['ferrugem','pessego','azul'], linha:'CR'},
       {nome:'Pontilhado', step:7, sx:1, faixas:['cremePontos','azulPontos'], linha:'TE', dupla:true},
-      {nome:'Xadrez grande', step:8, sx:1, faixas:['xadrezGrande','creme'], linha:'MO'},
-      {nome:'Achatado largo', step:10, sx:2, faixas:['xadrez','pessego'], linha:'MO', dupla:true},
       {nome:'Medalhão', step:6, sx:1, faixas:['xadrez','azulPontos','xadrez'], linha:'MO', max:3},
     ],
     fn(c, p){
-      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina;
+      const {cx, cy} = c, FR = aneis(MOLDURAS.fina);
       return (k,i,j)=>{
-        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const f = anelMoldura(c,k,i,j,FR); if(f>=0) return f;
         const dx = Math.abs(i-cx), dy = Math.abs(j-cy), d = Math.floor(dx/p.sx)+dy, band = Math.floor(d/p.step), r = d%p.step;
-        if(p.max && band>=p.max) return band===p.max && r===0 ? C[p.linha] : textura('creme',C,dx,dy);
+        if(p.max && band>=p.max) return band===p.max && r===0 ? C[p.linha] : C.CR;
         if(r===0) return C[p.linha];
         if(p.dupla && (r===1 || r===p.step-1)) return C.CR;
-        return textura(p.faixas[band%p.faixas.length],C,dx,dy);
+        return textura(p.faixas[band%p.faixas.length],dx,dy);
       };
     }},
-  trelica:{label:'Treliça', desc:'Um fundo liso com motivos repetidos numa grade regular.',
-    vars:[
-      {nome:'Cruzes', sp:6, motivo:'cruz', cor:'FE', motivo2:'ponto', cor2:'CR', fundo:'azul'},
-      {nome:'Cruzes miúdas', sp:4, motivo:'cruz', cor:'FE', fundo:'azul'},
-      {nome:'Quadrados', sp:6, motivo:'quadrado', cor:'FE', motivo2:'ponto', cor2:'MO', fundo:'azul'},
-      {nome:'Losangos', sp:8, motivo:'losango', cor:'TE', motivo2:'ponto', cor2:'FE', fundo:'creme'},
-      {nome:'Xis', sp:6, motivo:'xis', cor:'CH', motivo2:'ponto', cor2:'TE', fundo:'pessego'},
-      {nome:'Pontos', sp:4, motivo:'ponto', cor:'FE', motivo2:'ponto', cor2:'AZ', fundo:'creme'},
-      {nome:'Anéis', sp:6, motivo:'anel', cor:'MO', motivo2:'ponto', cor2:'FE', fundo:'azul'},
-      {nome:'Grandes', sp:10, motivo:'losango', cor:'FE', motivo2:'cruz', cor2:'MO', fundo:'azul'},
-      {nome:'Creme', sp:6, motivo:'cruz', cor:'TE', motivo2:'ponto', cor2:'AZ', fundo:'creme'},
-      {nome:'Sobre xadrez', sp:8, motivo:'losango', cor:'CR', motivo2:'ponto', cor2:'MO', fundo:'xadrez'},
-    ],
-    fn(c, p){
-      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina, folga = FR.length+1;
-      return (k,i,j)=>{
-        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
-        const g = grade(c,i,j,cx,cy,p.sp,p.motivo,C[p.cor],0,folga); if(g>=0) return g;
-        if(p.motivo2){ const g2 = grade(c,i,j,cx,cy,p.sp,p.motivo2,C[p.cor2],p.sp/2,folga); if(g2>=0) return g2; }
-        return textura(p.fundo,C,Math.abs(i-cx),Math.abs(j-cy));
-      };
-    }},
-  faixas:{label:'Faixas', desc:'Faixas paralelas espelhadas a partir do meio, separadas por linhas.',
+  faixas:{label:'Faixas', outro:true,
     vars:[
       {nome:'Clássico', dir:'h', U:9, seq:['azulPontos','xadrez'], sep:['MO']},
       {nome:'Em pé', dir:'v', U:9, seq:['azulPontos','xadrez'], sep:['MO']},
-      {nome:'Estreitas', dir:'h', U:5, seq:['azul','xadrez','pessego'], sep:['MO']},
       {nome:'Largas', dir:'h', U:13, seq:['azulPontos','xadrez'], sep:['FE','CR','FE']},
       {nome:'Tons', dir:'h', U:7, seq:['creme','pessego','terracota'], sep:['FE']},
       {nome:'Pontilhadas', dir:'v', U:7, seq:['creme','azul'], sep:['PONTOS']},
       {nome:'Listras finas', dir:'h', U:3, seq:['pessego','creme'], sep:['FE']},
-      {nome:'Dois xadrezes', dir:'h', U:9, seq:['xadrez','xadrezGrande'], sep:['MO','CR','MO']},
-      {nome:'Em pé largas', dir:'v', U:13, seq:['xadrez','azulPontos','pessego'], sep:['FE','CR','FE']},
-      {nome:'Marcadas', dir:'h', U:9, seq:['creme'], sep:['FE','FE']},
     ],
     fn(c, p){
-      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina, sw = p.sep.length, P = p.U+sw, hU = Math.floor(p.U/2);
+      const {cx, cy} = c, FR = aneis(MOLDURAS.fina), sw = p.sep.length, P = p.U+sw, hU = Math.floor(p.U/2);
       return (k,i,j)=>{
-        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const f = anelMoldura(c,k,i,j,FR); if(f>=0) return f;
         const dx = Math.abs(i-cx), dy = Math.abs(j-cy), a = p.dir==='h' ? dy : dx, b = p.dir==='h' ? dx : dy;
         const q = a-hU-1;
-        if(q<0) return textura(p.seq[0],C,dx,dy);
+        if(q<0) return textura(p.seq[0],dx,dy);
         const r = q%P, band = 1+Math.floor(q/P);
         if(r<sw){ const s = p.sep[r]; return s==='PONTOS' ? (b%2 ? C.CR : C.FE) : C[s]; }
-        return textura(p.seq[band%p.seq.length],C,dx,dy);
+        return textura(p.seq[band%p.seq.length],dx,dy);
       };
     }},
-  degraus:{label:'Degraus', desc:'Divisas e zigue-zagues em degraus, com linha entre as faixas.',
+  degraus:{label:'Degraus', outro:true,
     vars:[
       {nome:'Clássico', forma:'A', w:5, faixas:['xadrez','pessego'], linha:'MO'},
       {nome:'Invertido', forma:'V', w:5, faixas:['xadrez','pessego'], linha:'MO'},
       {nome:'Deitado', forma:'lado', w:5, faixas:['xadrez','azulPontos'], linha:'MO'},
       {nome:'Zigue-zague', forma:'zig', Z:6, w:4, faixas:['xadrez','pessego'], linha:'MO'},
       {nome:'Largo', forma:'A', w:8, faixas:['xadrez','azulPontos','pessego'], linha:'MO'},
-      {nome:'Estreito', forma:'A', w:3, faixas:['ferrugem','creme'], linha:'TE'},
-      {nome:'Achatado', forma:'A', sx:2, w:5, faixas:['xadrez','pessego'], linha:'MO'},
-      {nome:'Zigue largo', forma:'zig', Z:10, w:6, faixas:['azulPontos','xadrez'], linha:'FE'},
-      {nome:'Azul', forma:'V', w:6, faixas:['azul','creme','pessego'], linha:'TE'},
       {nome:'Zigue miúdo', forma:'zig', Z:4, w:3, faixas:['xadrez','creme'], linha:'MO'},
     ],
     fn(c, p){
-      const C = cores(c), {cx, cy} = centro(c), FR = MOLDURAS.fina, sx = p.sx||1, P = p.w+1;
+      const {cx, cy} = c, FR = aneis(MOLDURAS.fina), sx = p.sx||1, P = p.w+1;
       return (k,i,j)=>{
-        const f = anelMoldura(c,k,i,j,FR,C); if(f>=0) return f;
+        const f = anelMoldura(c,k,i,j,FR); if(f>=0) return f;
         const dx = Math.abs(i-cx), dy = Math.abs(j-cy), h = Math.floor(dx/sx);
         let t = p.forma==='A' ? (j-cy)-h : p.forma==='V' ? (cy-j)-h : p.forma==='lado' ? (i-cx)-dy : (j-cy)-near(dx,2*p.Z);
         t += 1000*P;
         const r = t%P, s = Math.floor(t/P);
         if(r===0) return C[p.linha];
-        return textura(p.faixas[s%p.faixas.length],C,dx,dy);
+        return textura(p.faixas[s%p.faixas.length],dx,dy);
       };
     }},
 };
-function targets(){ const t = []; const useSel = where==='sel' && selCount()>0; for(let k=0;k<G.n;k++) if(G.inside[k] && (!useSel || sel[k])) t.push(k); return t; }
-function distTo(tg){
-  const inT = new Uint8Array(G.n); for(const k of tg) inT[k] = 1;
-  const d = new Int16Array(G.n).fill(-1), q = [];
-  for(const k of tg){
-    const i = k%G.cols, j = (k/G.cols)|0; let edge = false;
-    for(let dj=-1;dj<=1&&!edge;dj++) for(let di=-1;di<=1;di++){ const ii = i+di, jj = j+dj; if(ii<0||jj<0||ii>=G.cols||jj>=G.rows||!inT[jj*G.cols+ii]){ edge = true; break; } }
-    if(edge){ d[k] = 0; q.push(k); }
-  }
-  for(let h=0; h<q.length; h++){
-    const k = q[h], i = k%G.cols, j = (k/G.cols)|0;
-    for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++){ const ii = i+di, jj = j+dj; if(ii<0||jj<0||ii>=G.cols||jj>=G.rows) continue; const y = jj*G.cols+ii; if(inT[y] && d[y]<0){ d[y] = d[k]+1; q.push(y); } }
-  }
-  return d;
-}
-// Retângulo do tapete: no chão todo, a área livre entre a bancada e a parede do banheiro;
-// na seleção, o retângulo que a contém. Sempre com número ímpar de ladrilhos, para ter centro.
+// Retângulo do tapete: a área livre entre a bancada e a parede do banheiro, com número ímpar de ladrilhos para ter centro
 const RUG_AREA = [70,60,466,490], RUG_MARGIN = 5;
-function rugBox(tg, m=RUG_MARGIN){
-  let b;
-  if(tg.length===G.total){
-    b = {i0:Math.ceil((RUG_AREA[0]-G.x0)/G.p)+m, i1:Math.floor((RUG_AREA[2]-10-G.x0)/G.p)-m,
-         j0:Math.ceil((RUG_AREA[1]-G.y0)/G.p)+m, j1:Math.floor((RUG_AREA[3]-10-G.y0)/G.p)-m};
-  } else {
-    b = {i0:1e9, i1:-1, j0:1e9, j1:-1};
-    for(const k of tg){ const i = k%G.cols, j = (k/G.cols)|0; b.i0 = Math.min(b.i0,i); b.i1 = Math.max(b.i1,i); b.j0 = Math.min(b.j0,j); b.j1 = Math.max(b.j1,j); }
-  }
+function rugBox(m){
+  const b = {i0:Math.ceil((RUG_AREA[0]-G.x0)/G.p)+m, i1:Math.floor((RUG_AREA[2]-10-G.x0)/G.p)-m,
+             j0:Math.ceil((RUG_AREA[1]-G.y0)/G.p)+m, j1:Math.floor((RUG_AREA[3]-10-G.y0)/G.p)-m};
   if((b.i1-b.i0)%2) b.i1--;
   if((b.j1-b.j0)%2) b.j1--;
   return b;
 }
-// Pinta o desenho em S.cells, sem desfazer nem salvar (a galeria usa isto para as miniaturas).
-// A moldura das paredes conta só ladrilhos inteiros, para ter a mesma grossura em todos os lados.
-function paint(style, v, tg){
-  const c = {R:roles(), remap:v.remap, box:rugBox(tg, v.m ?? RUG_MARGIN), dist:distTo(tg.filter(k=>G.area[k]>=99.5))};
-  const f = GENS[style].fn(c, v);
-  for(const k of tg) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
+// Pinta o desenho no chão todo com as cores da paleta (índices = papéis), sem desfazer nem salvar
+function paint(tipo, v){
+  const box = rugBox(v.m ?? RUG_MARGIN);
+  const c = {box, dist:G.dist, cx:(box.i0+box.i1)/2, cy:(box.j0+box.j1)/2};
+  const f = GENS[tipo].fn(c, v);
+  for(const k of G.all) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
 }
-function generate(style, v, quiet){
-  const tg = targets(); if(!tg.length) return;
+function applyDesign(tipo, n, esq, quiet){
   if(!quiet) pushUndo();
-  paint(style, v, tg);
-  changed();
+  S.palette = PALETAS[esq].cores.slice();
+  paint(tipo, GENS[tipo].vars[n]);
+  compactar();
+  S.design = {tipo, n, esq};
+  changed(true);
 }
-function setWhere(w){ where = w; $('whereAll').setAttribute('aria-pressed', w==='all'); $('whereSel').setAttribute('aria-pressed', w==='sel'); }
-$('whereAll').onclick = ()=>setWhere('all'); $('whereSel').onclick = ()=>setWhere('sel');
+
+/* ---------- Miniaturas: desenhos e cores ---------- */
+const DEFAULT_DESIGN = {tipo:'moldura', n:0, esq:0};
+const des = ()=>S.design || DEFAULT_DESIGN;
+function drawThumb(cv, tipo, v, cores){
+  const w = cv.clientWidth || 120, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
+  cv.width = Math.round(w*r); cv.height = Math.round(h*r);
+  const keep = {cells:S.cells, palette:S.palette, plan:S.plan};
+  S.cells = new Uint8Array(G.n).fill(OUT); S.palette = cores; S.plan = false;
+  paint(tipo, v);
+  const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false, 0, true);
+  Object.assign(S, keep);
+}
+function drawCellsThumb(cv, cells, palette){
+  const w = cv.clientWidth || 120, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
+  cv.width = Math.round(w*r); cv.height = Math.round(h*r);
+  const keep = {cells:S.cells, palette:S.palette, plan:S.plan};
+  S.cells = cells; S.palette = palette || S.palette; S.plan = false;
+  const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false, 0, true);
+  Object.assign(S, keep);
+}
+const tileHTML = (attrs, nome, pressed)=>`<button class="tile" ${attrs} aria-pressed="${!!pressed}" title="${esc(nome)}"><canvas></canvas><span class="nm">${esc(nome)}</span></button>`;
+function renderTabs(){
+  const tabs = [['trelica','Treliça',GENS.trelica.vars.length],['moldura','Moldura',GENS.moldura.vars.length],['outros','Outros',null]];
+  $('tabs').innerHTML = tabs.map(([id,lab,n])=>`<button role="tab" data-tab="${id}" aria-selected="${tab===id}">${lab}${n?`<span class="cnt">${n}</span>`:''}</button>`).join('');
+}
+$('tabs').onclick = e=>{ const b = e.target.closest('[data-tab]'); if(b){ tab = b.dataset.tab; renderTabs(); renderDesigns(); } };
+let imgOpts = null;
+function renderDesigns(){
+  const d = des(), cores = PALETAS[d.esq].cores, jobs = [];
+  let html = '';
+  const bloco = tipo=>{
+    const g = GENS[tipo];
+    return `<div class="tiles">${g.vars.map((v,n)=>{ jobs.push([tipo,v]); return tileHTML(`data-tipo="${tipo}" data-n="${n}"`, v.nome, S.design && d.tipo===tipo && d.n===n); }).join('')}</div>`;
+  };
+  if(tab==='outros'){
+    html += `<div class="sec" style="padding-top:0"><h3>A partir de uma imagem sua</h3><div class="tiles">
+      <button class="tile" id="uplTile"><span class="upl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>Escolher</span><span class="nm">Enviar imagem</span></button>
+      ${(imgOpts||[]).map((o,n)=>tileHTML(`data-img="${n}"`, o.nome, false)).join('')}</div></div>`;
+    for(const [tipo,g] of Object.entries(GENS)) if(g.outro) html += `<div class="sec" style="padding-top:16px"><h3>${g.label}</h3>${bloco(tipo)}</div>`;
+  } else html = bloco(tab);
+  $('designs').innerHTML = html;
+  requestAnimationFrame(()=>{
+    let n = 0;
+    $('designs').querySelectorAll('.tile').forEach(b=>{
+      const cvx = b.querySelector('canvas'); if(!cvx) return;
+      if(b.dataset.img!==undefined){ const o = imgOpts[+b.dataset.img]; drawCellsThumb(cvx, o.cells, o.palette); return; }
+      const [tipo,v] = jobs[n++]; drawThumb(cvx, tipo, v, cores);
+    });
+  });
+}
+function renderSchemes(){
+  const d = des(), g = GENS[d.tipo], v = g.vars[d.n];
+  $('coresTitle').textContent = `Cores para ${g.label} · ${v.nome}`;
+  $('schemes').innerHTML = PALETAS.map((p,n)=>tileHTML(`data-esq="${n}"`, p.nome, S.design && d.esq===n)).join('');
+  requestAnimationFrame(()=>$('schemes').querySelectorAll('.tile').forEach(b=>drawThumb(b.querySelector('canvas'), d.tipo, v, PALETAS[+b.dataset.esq].cores)));
+}
+function renderTiles(full){
+  if(mode!=='des') return;
+  if(full){ renderTabs(); renderDesigns(); renderSchemes(); return; }
+  // só marca a escolha, sem redesenhar
+  const d = S.design;
+  $('designs').querySelectorAll('[data-tipo]').forEach(b=>b.setAttribute('aria-pressed', !!d && b.dataset.tipo===d.tipo && +b.dataset.n===d.n));
+  $('schemes').querySelectorAll('[data-esq]').forEach(b=>b.setAttribute('aria-pressed', !!d && +b.dataset.esq===d.esq));
+}
+let lastDes = '';
+function syncTiles(){
+  // redesenha só o que mudou: trocar de desenho redesenha as cores; trocar de cores redesenha os desenhos
+  const d = des(), key = `${d.tipo}|${d.n}|${d.esq}`;
+  if(key===lastDes) return renderTiles(false);
+  const [t0,n0,e0] = lastDes.split('|'); lastDes = key;
+  if(mode!=='des') return;
+  if(t0!==d.tipo || +n0!==d.n) renderSchemes(); else renderTiles(false);
+  if(+e0!==d.esq) renderDesigns(); else renderTiles(false);
+}
+$('designs').onclick = e=>{
+  if(e.target.closest('#uplTile')){ $('imgIn').click(); return; }
+  const im = e.target.closest('[data-img]');
+  if(im){
+    const op = imgOpts[+im.dataset.img]; pushUndo();
+    if(op.palette) S.palette = op.palette.slice();
+    S.cells = op.cells.slice(); S.design = null; compactar(); cur = 0; changed(true);
+    toast(`Imagem aplicada com “${op.nome}”. Ctrl+Z desfaz.`); return;
+  }
+  const b = e.target.closest('[data-tipo]'); if(!b) return;
+  applyDesign(b.dataset.tipo, +b.dataset.n, des().esq);
+};
+$('schemes').onclick = e=>{
+  const b = e.target.closest('[data-esq]'); if(!b) return;
+  const d = des(); applyDesign(d.tipo, d.n, +b.dataset.esq);
+};
 
 /* ---------- Desenho a partir de uma imagem (tudo no navegador; a imagem não sai daqui) ---------- */
 function toLab(r,g,b){
@@ -1042,12 +1124,11 @@ const hexLab = h=>{ const n = parseInt(h.slice(1),16); return toLab(n>>16&255, n
 const d2 = (p,q)=>(p[0]-q[0])**2+(p[1]-q[1])**2+(p[2]-q[2])**2;
 // Cor média (em Lab) de cada ladrilho, com a imagem cobrindo o chão à vista e cortada no centro
 function sampleImage(img){
-  const X0 = 70, W = ROOM_W-X0, H = ROOM_H, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const x = cv.getContext('2d'), sc = Math.max(W/img.width, H/img.height);
+  const X0 = 70, W = ROOM_W-X0, H = ROOM_H, cvs = document.createElement('canvas'); cvs.width = W; cvs.height = H;
+  const x = cvs.getContext('2d'), sc = Math.max(W/img.width, H/img.height);
   x.imageSmoothingQuality = 'high'; x.drawImage(img, (W-img.width*sc)/2, (H-img.height*sc)/2, img.width*sc, img.height*sc);
   const d = x.getImageData(0,0,W,H).data, lab = new Array(G.n);
-  for(let k=0;k<G.n;k++){
-    if(!G.inside[k]) continue;
+  for(const k of G.all){
     const i = k%G.cols, j = (k/G.cols)|0;
     const ax = Math.max(0, Math.floor(G.x0+i*G.p-X0)), bx = Math.min(W, Math.ceil(G.x0+i*G.p+10-X0));
     const ay = Math.max(0, Math.floor(G.y0+j*G.p)), by = Math.min(H, Math.ceil(G.y0+j*G.p+10));
@@ -1078,18 +1159,10 @@ function nearestCells(lab, pal){
 function imageOptions(lab){
   const p8 = kcores(lab, 8), p4 = kcores(lab, 4);
   return [
-    {nome:'Cores da imagem', sub:`${p8.length} cores tiradas da imagem. Troca a paleta e vale para o chão todo.`, palette:p8, cells:nearestCells(lab,p8)},
-    {nome:'Simplificado', sub:`Só ${p4.length} cores, para um desenho mais limpo. Troca a paleta.`, palette:p4, cells:nearestCells(lab,p4)},
-    {nome:'Cores atuais', sub:'Usa as cores que já estão na paleta, sem trocar nada.', palette:null, cells:nearestCells(lab,S.palette)},
+    {nome:'Cores da imagem', palette:p8, cells:nearestCells(lab,p8)},
+    {nome:'Simplificado', palette:p4, cells:nearestCells(lab,p4)},
+    {nome:'Cores atuais', palette:null, cells:nearestCells(lab,S.palette)},
   ];
-}
-function drawCellsThumb(cv, cells, palette){
-  const w = cv.clientWidth || 180, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
-  cv.width = Math.round(w*r); cv.height = Math.round(h*r);
-  const keep = {cells:S.cells, palette:S.palette, plan:S.plan};
-  S.cells = cells; S.palette = palette || S.palette; S.plan = false;
-  const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false);
-  Object.assign(S, keep);
 }
 function loadImage(f){
   if(window.createImageBitmap) return createImageBitmap(f);
@@ -1097,83 +1170,22 @@ function loadImage(f){
 }
 $('imgIn').onchange = async e=>{
   const f = e.target.files[0]; e.target.value = ''; if(!f) return;
-  try{ galSt.img = imageOptions(sampleImage(await loadImage(f))); galSt.passo = 'img'; renderGal(); }
+  try{ imgOpts = imageOptions(sampleImage(await loadImage(f))); tab = 'outros'; renderTabs(); renderDesigns(); toast('Escolha uma das três versões da imagem.'); }
   catch(err){ toast('Essa imagem não abriu. Tente um JPG ou PNG.'); }
 };
 
-/* ---------- Galeria em 3 passos: tipo › desenho › cores ---------- */
-const galSt = {passo:1, tipo:null, des:null, img:null};
-function drawThumb(cv, style, v){
-  const w = cv.clientWidth || 180, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
-  cv.width = Math.round(w*r); cv.height = Math.round(h*r);
-  const keepCells = S.cells, keepPlan = S.plan, all = [];
-  for(let k=0;k<G.n;k++) if(G.inside[k]) all.push(k);
-  S.cells = keepCells.slice(); S.plan = false;
-  paint(style, v, all);
-  const s = w/(ROOM_W+40);
-  drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false);
-  S.cells = keepCells; S.plan = keepPlan;
-}
-function galItems(){
-  const st = galSt;
-  if(st.passo===1) return [...Object.entries(GENS).map(([k,g])=>({nome:g.label, sub:g.desc, tipo:k, v:g.vars[0]})),
-    {nome:'Enviar imagem', sub:'Transforma uma imagem sua em ladrilhos. Funciona melhor com padrão ou desenho visto de frente.', upload:true}];
-  if(st.passo==='img') return st.img;
-  const g = GENS[st.tipo];
-  if(st.passo===2) return g.vars.map(v=>({nome:v.nome, tipo:st.tipo, v}));
-  const v = g.vars[st.des];
-  return ESQUEMAS.map(e=>({nome:e.nome, sub:e.desc, tipo:st.tipo, v:{...v, remap:e.remap}}));
-}
-function renderGal(){
-  const st = galSt, onSel = where==='sel' && selCount()>0, items = galItems();
-  const passos = st.passo==='img' ? ['Tipo','Cores da imagem'] : ['Tipo','Desenho','Cores'], atual = st.passo==='img' ? 2 : st.passo;
-  $('galSteps').innerHTML = passos.map((t,n)=>`<span class="${n+1===atual?'on':''}">${n+1}. ${t}</span>`).join('<span aria-hidden="true">›</span>');
-  $('galBack').classList.toggle('hidden', st.passo===1);
-  const g = GENS[st.tipo];
-  $('galTitle').textContent = st.passo===1 ? 'Escolha o tipo' : st.passo==='img' ? 'Sua imagem em ladrilhos: escolha as cores' : st.passo===2 ? `${g.label}: escolha o desenho` : `${g.label} · ${g.vars[st.des].nome}: escolha as cores`;
-  $('galNote').textContent = st.passo===1 ? 'Depois você escolhe o desenho e as cores.'
-    : st.passo==='img' ? 'Cada ladrilho pega a cor média do pedaço da imagem que cai em cima dele.'
-    : st.passo===2 ? `${g.vars.length} desenhos, todos nas cores originais. As cores vêm no próximo passo.`
-    : onSel ? 'Clique para aplicar só nos ladrilhos selecionados.' : 'Clique para aplicar no chão.';
-  const cardsCls = st.passo==='img' ? 3 : st.passo;
-  $('galList').innerHTML = `<div class="cards cards-${cardsCls}">${items.map((it,n)=>`<button class="card" data-n="${n}" aria-label="${esc(it.nome)}">${it.upload
-      ? `<span class="upl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v4h16v-4"/></svg>Escolher arquivo</span>`
-      : '<canvas></canvas>'}<span class="cn">${esc(it.nome)}</span>${it.sub?`<span class="cs">${esc(it.sub)}</span>`:''}</button>`).join('')}</div>`;
-  $('gal').scrollTop = 0;
-  requestAnimationFrame(()=>$('galList').querySelectorAll('.card').forEach(b=>{
-    const it = items[+b.dataset.n], cv = b.querySelector('canvas'); if(!cv) return;
-    if(it.cells) drawCellsThumb(cv, it.cells, it.palette); else drawThumb(cv, it.tipo, it.v);
-  }));
-}
-function openGal(){ galSt.passo = 1; $('gal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; renderGal(); $('galClose').focus(); }
-function closeGal(){ $('gal').classList.add('hidden'); document.body.style.overflow = ''; $('galList').innerHTML = ''; }
-$('genBtn').onclick = openGal;
-$('galClose').onclick = closeGal;
-$('galBack').onclick = ()=>{ galSt.passo = galSt.passo==='img' ? 1 : Math.max(1, galSt.passo-1); renderGal(); };
-$('gal').onclick = e=>{
-  if(e.target===$('gal')){ closeGal(); return; }
-  const b = e.target.closest('.card'); if(!b) return;
-  const n = +b.dataset.n, st = galSt;
-  if(st.passo===1 && n>=Object.keys(GENS).length){ $('imgIn').click(); return; }
-  if(st.passo==='img'){
-    const op = st.img[n];
-    pushUndo();
-    if(op.palette){ S.palette = op.palette.slice(); S.cells = op.cells.slice(); cur = 0; changed(true); }
-    else { for(const k of targets()) S.cells[k] = op.cells[k]; changed(); }
-    closeGal(); toast(`Imagem aplicada com “${op.nome}”. Ctrl+Z desfaz.`); return;
-  }
-  if(st.passo===1){ st.tipo = Object.keys(GENS)[n]; st.passo = 2; renderGal(); return; }
-  if(st.passo===2){ st.des = n; st.passo = 3; renderGal(); return; }
-  const g = GENS[st.tipo], v = g.vars[st.des], e2 = ESQUEMAS[n];
-  generate(st.tipo, {...v, remap:e2.remap}); closeGal();
-  toast(`${g.label} · ${v.nome} · ${e2.nome} aplicado. Ctrl+Z desfaz.`);
-};
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !$('gal').classList.contains('hidden')) closeGal(); });
+/* ---------- Janelas: ajustes e salvar ---------- */
+function openSheet(id){ closeSheets(); $(id).hidden = false; $('backdrop').hidden = false; const f = $(id).querySelector('[data-close]'); if(f) f.focus(); }
+function closeSheets(){ $('shAj').hidden = true; $('shSv').hidden = true; $('backdrop').hidden = true; }
+$('ajBtn').onclick = ()=>openSheet('shAj');
+$('svBtn').onclick = ()=>{ renderSaved(); openSheet('shSv'); };
+$('backdrop').onclick = closeSheets;
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick = closeSheets);
 
 /* ---------- Chão: rejunte, alinhamento ---------- */
-function updTotals(cnt){
-  $('resumo').textContent = `Chão à vista ${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(G.total)} ladrilhos 10×10 · rejunte ${String(S.grout).replace('.',',')} mm`;
-  $('totals').innerHTML = `<b>${fmt(G.total)}</b> ladrilhos, dos quais <b>${fmt(G.cut)}</b> cortados junto às paredes. A contagem por cor está em Cores, sem a margem de perda.`;
+function updTotals(){
+  $('resumo').textContent = `${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(G.total)} ladrilhos 10×10 · rejunte ${String(S.grout).replace('.',',')} mm`;
+  $('totals').textContent = `${fmt(G.total)} ladrilhos no total, ${fmt(G.cut)} deles cortados junto às paredes. Sem a margem de perda.`;
 }
 let gBase = null;
 $('grout').addEventListener('input', e=>{
@@ -1191,14 +1203,22 @@ let gEdit = false;
 $('groutColor').addEventListener('input', e=>{ if(!gEdit){ pushUndo(); gEdit = true; } S.groutColor = e.target.value; $('groutChip').style.background = S.groutColor; render(); save(); });
 $('groutColor').addEventListener('change', ()=>{ gEdit = false; });
 $('plan').onchange = e=>{ S.plan = e.target.checked; render(); save(); };
+// Volta tudo para como a página abre; os desenhos salvos ficam, e Ctrl+Z desfaz
+$('resetBtn').onclick = ()=>{
+  pushUndo();
+  Object.assign(S, {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', plan:true});
+  G = buildGrid(S.grout, S.origin); S.cells = new Uint8Array(G.n).fill(OUT);
+  applyDesign(DEFAULT_DESIGN.tipo, DEFAULT_DESIGN.n, DEFAULT_DESIGN.esq, true);
+  closeSheets(); fitView(); toast('Voltou ao desenho inicial. Ctrl+Z desfaz.');
+};
 
 /* ---------- Guardar, abrir, exportar ---------- */
 const KEY_CUR = 'ladrilhos-sala:atual-3', KEY_LIST = 'ladrilhos-sala:desenhos';
 function store(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function toObj(){
-  let c = ''; for(let k=0;k<G.n;k++) if(G.inside[k]) c += HEX[S.cells[k]];
-  return {app:'ladrilhos-sala', v:1, grout:S.grout, groutColor:S.groutColor, origin:S.origin, palette:S.palette.slice(), plan:S.plan, cells:c};
+  let c = ''; for(const k of G.all) c += HEX[S.cells[k]];
+  return {app:'ladrilhos-sala', v:1, grout:S.grout, groutColor:S.groutColor, origin:S.origin, palette:S.palette.slice(), plan:S.plan, cells:c, design:S.design};
 }
 function fromObj(o){
   if(!o || !Array.isArray(o.palette) || typeof o.cells!=='string') throw new Error('formato');
@@ -1207,17 +1227,19 @@ function fromObj(o){
   const NG = buildGrid(+o.grout||2, o.origin==='centro'?'centro':'bancada');
   if(o.cells.length!==NG.total) throw new Error('tamanho');
   const nc = new Uint8Array(NG.n).fill(OUT); let p = 0;
-  for(let k=0;k<NG.n;k++) if(NG.inside[k]){ const v = HEX.indexOf(o.cells[p++]); nc[k] = v>=0 && v<pal.length ? v : 0; }
+  for(const k of NG.all){ const v = HEX.indexOf(o.cells[p++]); nc[k] = v>=0 && v<pal.length ? v : 0; }
   S.grout = NG.grout; S.origin = NG.origin; S.palette = pal; S.groutColor = /^#[0-9a-f]{6}$/i.test(o.groutColor) ? o.groutColor : S.groutColor;
   if(typeof o.plan==='boolean') S.plan = o.plan;
-  G = NG; S.cells = nc; sel = new Uint8Array(G.n);
+  const d = o.design;
+  S.design = d && GENS[d.tipo] && GENS[d.tipo].vars[d.n] && PALETAS[d.esq] ? {tipo:d.tipo, n:+d.n, esq:+d.esq} : null;
+  G = NG; S.cells = nc;
   if(cur>=pal.length) cur = 0;
 }
 let saveT = 0;
 function save(){ clearTimeout(saveT); saveT = setTimeout(()=>store(KEY_CUR, JSON.stringify(toObj())), 400); }
 function changed(full){
-  if(full){ syncControls(); updSel(); }
-  updPalette(); render(); save();
+  if(full) syncControls();
+  updPalette(); render(); save(); syncTiles();
 }
 function syncControls(){
   $('grout').value = S.grout; $('groutVal').textContent = String(S.grout).replace('.',',')+' mm';
@@ -1230,7 +1252,7 @@ function thumb(){
   const pad = 20, bw = ROOM_W+2*pad, s = 120/bw, w = 120, h = Math.round((ROOM_H+2*pad)*s);
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const keep = S.plan; S.plan = false;
-  drawScene(c.getContext('2d'), s, pad*s, pad*s, 1, w, h, false);
+  drawScene(c.getContext('2d'), s, pad*s, pad*s, 1, w, h, false, 0, true);
   S.plan = keep;
   return c.toDataURL('image/png');
 }
@@ -1240,8 +1262,8 @@ function renderSaved(){
     <div class="item">
       <img src="${d.thumb}" alt="">
       <div style="min-width:0"><div class="nm">${esc(d.name)}</div><div class="dt">${new Date(d.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}</div></div>
-      <div class="acts"><button class="btn small" data-open="${i}">Abrir</button><button class="btn small icon danger" data-rm="${i}" title="Apagar" aria-label="Apagar ${esc(d.name)}">${XS}</button></div>
-    </div>`).join('') : '<p class="empty">Nenhum desenho salvo ainda. Dê um nome acima e clique em Salvar.</p>';
+      <div class="acts2"><button class="btn small" data-open="${i}">Abrir</button><button class="btn small icon ghost danger" data-rm="${i}" title="Apagar" aria-label="Apagar ${esc(d.name)}">${XS}</button></div>
+    </div>`).join('') : '<p class="empty">Nenhum desenho salvo ainda.</p>';
 }
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function addSaved(name, obj, th){
@@ -1257,7 +1279,7 @@ $('saveName').addEventListener('keydown', e=>{ if(e.key==='Enter') $('saveBtn').
 $('saved').onclick = e=>{
   const o = e.target.closest('[data-open]'), r = e.target.closest('[data-rm]');
   const list = savedList();
-  if(o){ const d = list[+o.dataset.open]; pushUndo(); try{ fromObj(d.data); changed(true); fitView(); toast(`“${d.name}” aberto.`); }catch(err){ undoS.pop(); updUndo(); toast('Esse desenho não abriu.'); } }
+  if(o){ const d = list[+o.dataset.open]; pushUndo(); try{ fromObj(d.data); changed(true); fitView(); closeSheets(); toast(`“${d.name}” aberto.`); }catch(err){ undoS.pop(); updUndo(); toast('Esse desenho não abriu.'); } }
   if(r){ const i = +r.dataset.rm; if(confirm(`Apagar “${list[i].name}” deste navegador?`)){ list.splice(i,1); store(KEY_LIST, JSON.stringify(list)); renderSaved(); } }
 };
 function download(name, blob){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 2000); }
@@ -1267,7 +1289,7 @@ $('openBtn').onclick = ()=>$('fileIn').click();
 $('fileIn').onchange = async e=>{
   const f = e.target.files[0]; e.target.value = ''; if(!f) return;
   pushUndo();
-  try{ fromObj(JSON.parse(await f.text())); changed(true); fitView(); toast(`“${f.name}” aberto.`); }
+  try{ fromObj(JSON.parse(await f.text())); changed(true); fitView(); closeSheets(); toast(`“${f.name}” aberto.`); }
   catch(err){ undoS.pop(); updUndo(); toast('Esse arquivo não é um desenho deste chão.'); }
 };
 $('pngBtn').onclick = ()=>{
@@ -1305,15 +1327,15 @@ async function unpack(code){
 }
 $('linkBtn').onclick = async ()=>{
   const url = location.origin+location.pathname+'#d='+await pack(JSON.stringify(toObj()));
-  try{ await navigator.clipboard.writeText(url); toast('Link copiado. Quem abrir vê este desenho.'); $('linkBox').classList.remove('show'); }
-  catch(e){ $('linkOut').value = url; $('linkBox').classList.add('show'); $('linkOut').select(); toast('Copie o link na caixa abaixo.'); }
+  try{ await navigator.clipboard.writeText(url); toast('Link copiado. Quem abrir vê este desenho.'); $('linkBox').hidden = true; }
+  catch(e){ $('linkOut').value = url; $('linkBox').hidden = false; $('linkOut').select(); toast('Copie o link na caixa abaixo.'); }
 };
 let toastT = 0;
 function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'), 2600); }
 
 /* ---------- Início ---------- */
 async function boot(){
-  buildTools(); setWhere('all');
+  buildTools();
   let loaded = false;
   const h = location.hash.match(/^#d=([rz][\w-]+)/);
   if(h){
@@ -1323,15 +1345,17 @@ async function boot(){
       if(prev && prev!==JSON.stringify(toObj())){
         const keep = {G, cells:S.cells, s:{...S}};
         try{ const po = JSON.parse(prev); fromObj(po); addSaved('Rascunho anterior', po, thumb()); }catch(e){}
-        G = keep.G; Object.assign(S, keep.s); S.cells = keep.cells; sel = new Uint8Array(G.n);
+        G = keep.G; Object.assign(S, keep.s); S.cells = keep.cells;
       }
       history.replaceState(null,'',location.pathname+location.search);
       setTimeout(()=>toast('Desenho recebido pelo link.'), 300);
     }catch(e){ setTimeout(()=>toast('O link não abriu. Mostrando o último desenho.'), 300); }
   }
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
-  if(!loaded){ regrid(null,null); generate('tapete', GENS.tapete.vars[0], true); }
-  syncControls(); updSel(); updPalette(); updTools(); updUndo(); renderSaved();
+  if(!loaded){ regrid(null,null); applyDesign(DEFAULT_DESIGN.tipo, DEFAULT_DESIGN.n, DEFAULT_DESIGN.esq, true); }
+  if(S.design) tab = S.design.tipo in {trelica:1, moldura:1} ? S.design.tipo : 'outros';
+  const d = des(); lastDes = `${d.tipo}|${d.n}|${d.esq}`;
+  syncControls(); updPalette(); updTools(); updUndo(); setMode('des');
   new ResizeObserver(resize).observe(vp); resize();
 }
 boot();
