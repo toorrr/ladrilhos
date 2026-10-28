@@ -92,6 +92,11 @@ button,input{font:inherit;color:inherit}
 .edit svg{width:16px;height:16px;display:block}
 .edit input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
 
+.sws{display:flex;flex-wrap:wrap;gap:8px}
+.palset{display:flex;flex-direction:column;gap:4px}
+.palset span{font-size:12px;color:var(--ink2)}
+.corprev{width:40px;height:40px;border-radius:8px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);flex:none}
+button.edit{padding:0;color:inherit}
 .backdrop{position:fixed;inset:0;background:rgba(42,34,29,.32);z-index:20}
 .sheet{position:fixed;z-index:21;top:72px;right:16px;width:368px;max-height:calc(100dvh - 88px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 32px rgba(42,34,29,.18);padding:24px}
 .sheethead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-8px -8px 8px 0}
@@ -253,6 +258,24 @@ input[type=range]{width:100%;accent-color:var(--accent)}
       <button class="btn small ghost" id="openBtn">Abrir arquivo</button>
     </div>
     <input type="file" id="fileIn" accept=".json,application/json" hidden>
+  </div>
+</div>
+
+<div class="sheet" id="shCor" role="dialog" aria-modal="true" aria-labelledby="corTitle" hidden>
+  <div class="sheethead"><h2 id="corTitle">Trocar cor</h2><button class="btn icon ghost" data-close aria-label="Fechar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+  <div class="blk">
+    <div class="rowx" style="align-items:flex-start"><i class="corprev" id="corAtual"></i><div><div id="corHex" style="font-size:14px;font-weight:600;font-variant-numeric:tabular-nums"></div><div style="font-size:12px;color:var(--ink2)">Todos os ladrilhos desta cor mudam juntos.</div></div></div>
+  </div>
+  <div class="blk">
+    <h3>Cores deste chão</h3>
+    <div class="sws" id="corChao"></div>
+  </div>
+  <div class="blk">
+    <h3>Cores das paletas</h3>
+    <div class="stack" id="corPaletas"></div>
+  </div>
+  <div class="blk">
+    <label class="btn small" style="position:relative">Outra cor<input type="color" id="corLivre" aria-label="Escolher outra cor" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0"></label>
   </div>
 </div>
 
@@ -648,7 +671,7 @@ function updPalette(){
       <button class="chip" data-c="${i}" style="background:${h}" aria-pressed="${i===cur}" aria-label="Pintar com a cor ${i+1}"></button>
       <span class="hex">${h.toUpperCase()}</span>
       <span class="n">${fmt(cnt[i])}</span>
-      <label class="edit" title="Trocar esta cor">${PEN}<input type="color" value="${h}" data-edit="${i}" aria-label="Trocar a cor ${i+1}"></label>
+      <button class="edit" data-edit="${i}" title="Trocar esta cor" aria-label="Trocar a cor ${i+1}">${PEN}</button>
       <button class="btn small icon ghost" data-del="${i}" title="Tirar esta cor" aria-label="Tirar a cor ${i+1}" ${S.palette.length<=2?'disabled':''}>${XS}</button>
     </div>`).join('');
   $('addColor').disabled = S.palette.length>=MAX_COLORS;
@@ -658,19 +681,29 @@ function updPalette(){
 }
 $('pal').onclick = e=>{
   const d = e.target.closest('[data-del]'); if(d){ delColor(+d.dataset.del); return; }
+  const ed = e.target.closest('[data-edit]'); if(ed){ openCor(+ed.dataset.edit); return; }
   const b = e.target.closest('[data-c]'); if(b){ cur = +b.dataset.c; updPalette(); if(tool==='conta') setTool('pincel'); }
 };
-let editing = false;
-$('pal').addEventListener('input', e=>{
-  const i = e.target.dataset.edit; if(i===undefined) return;
+// Trocar uma cor: escolha rápida entre as cores do chão e as das paletas; "Outra cor" abre o seletor livre
+let corI = -1, editing = false;
+const sw = (h, on)=>`<button class="chip" data-h="${h}" style="background:${h}" aria-pressed="${on}" title="${h.toUpperCase()}" aria-label="${h.toUpperCase()}"></button>`;
+function renderCor(){
+  const atual = S.palette[corI].toUpperCase(), on = h=>h.toUpperCase()===atual;
+  $('corAtual').style.background = atual; $('corHex').textContent = atual;
+  $('corChao').innerHTML = S.palette.map(h=>sw(h, on(h))).join('');
+  $('corPaletas').innerHTML = PALETAS.map(p=>`<div class="palset"><span>${p.nome}</span><div class="sws">${p.cores.map(h=>sw(h, on(h))).join('')}</div></div>`).join('');
+  $('corLivre').value = S.palette[corI];
+}
+function openCor(i){ corI = i; renderCor(); openSheet('shCor'); }
+function setCor(h, live){
   if(!editing){ pushUndo(); editing = true; }
-  S.palette[+i] = e.target.value;
-  const row = e.target.closest('.palrow');
-  row.querySelector('.chip').style.background = e.target.value;
-  row.querySelector('.hex').textContent = e.target.value.toUpperCase();
-  render(); save();
-});
-$('pal').addEventListener('change', e=>{ if(e.target.dataset.edit!==undefined){ editing = false; updPalette(); } });
+  S.palette[corI] = h;
+  if(live){ $('corAtual').style.background = h; $('corHex').textContent = h.toUpperCase(); render(); save(); return; }
+  editing = false; changed(); renderCor();
+}
+$('shCor').addEventListener('click', e=>{ const b = e.target.closest('[data-h]'); if(b) setCor(b.dataset.h); });
+$('corLivre').addEventListener('input', e=>setCor(e.target.value, true));
+$('corLivre').addEventListener('change', e=>setCor(e.target.value));
 function delColor(i){
   const n = counts()[i], to = i===0 ? 1 : 0;
   if(n && !confirm(`${fmt(n)} ladrilhos têm esta cor. Eles passam para a cor ${to+1}. Continuar?`)) return;
@@ -686,7 +719,7 @@ $('addColor').onclick = ()=>{
   const pool = PALETAS.flatMap(p=>p.cores);
   S.palette.push(pool.find(h=>!S.palette.includes(h)) || '#999999');
   cur = S.palette.length-1; changed(true);
-  const inp = $('pal').querySelector(`[data-edit="${cur}"]`); if(inp) inp.click();
+  openCor(cur);
 };
 // Une cores repetidas e tira as que o desenho não usa: a lista de cores vira a lista de compra
 function compactar(){
@@ -1176,7 +1209,7 @@ $('imgIn').onchange = async e=>{
 
 /* ---------- Janelas: ajustes e salvar ---------- */
 function openSheet(id){ closeSheets(); $(id).hidden = false; $('backdrop').hidden = false; const f = $(id).querySelector('[data-close]'); if(f) f.focus(); }
-function closeSheets(){ $('shAj').hidden = true; $('shSv').hidden = true; $('backdrop').hidden = true; }
+function closeSheets(){ $('shAj').hidden = true; $('shSv').hidden = true; $('shCor').hidden = true; $('backdrop').hidden = true; }
 $('ajBtn').onclick = ()=>openSheet('shAj');
 $('svBtn').onclick = ()=>{ renderSaved(); openSheet('shSv'); };
 $('backdrop').onclick = closeSheets;
