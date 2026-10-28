@@ -821,9 +821,34 @@ function grade(c, i, j, cx, cy, sp, motivo, cor, offset, folga, fora){
   if(!cabe(c, ci, cj, M.r, folga, fora)) return -1;
   return Array.isArray(cor) ? cor[v-1] : cor;
 }
+// Onde pôr a grade de motivos: testa todas as posições da grade e fica com a que cabe mais motivos
+// inteiros no chão, com as sobras iguais dos dois lados. Assim a grade aproveita também o canto do L.
+function melhorCentro(c, sp, r, folga){
+  const key = `${sp}|${r}|${folga}`, memo = G.centros || (G.centros = {});
+  if(memo[key]) return memo[key];
+  const bb = [1e9,-1,1e9,-1];
+  for(const k of G.all) if(c.dist[k]>=folga){ const i = k%G.cols, j = (k/G.cols)|0; bb[0] = Math.min(bb[0],i); bb[1] = Math.max(bb[1],i); bb[2] = Math.min(bb[2],j); bb[3] = Math.max(bb[3],j); }
+  let best = null, bs = -Infinity;
+  for(let oy=0; oy<sp; oy++) for(let ox=0; ox<sp; ox++){
+    let n = 0; const a = [1e9,-1,1e9,-1];
+    for(let j=bb[2]+mod(oy-bb[2],sp); j<=bb[3]; j+=sp) for(let i=bb[0]+mod(ox-bb[0],sp); i<=bb[1]; i+=sp){
+      if(!cabe(c,i,j,r,folga)) continue;
+      n++; a[0] = Math.min(a[0],i-r); a[1] = Math.max(a[1],i+r); a[2] = Math.min(a[2],j-r); a[3] = Math.max(a[3],j+r);
+    }
+    const sc = n*1000 - Math.abs((a[0]-bb[0])-(bb[1]-a[1])) - Math.abs((a[2]-bb[2])-(bb[3]-a[3]));
+    if(sc>bs){ bs = sc; best = [ox,oy]; }
+  }
+  // um centro da grade perto do meio da sala, para as texturas continuarem espelhadas ali
+  return memo[key] = {cx:best[0]+sp*Math.round((c.cx-best[0])/sp), cy:best[1]+sp*Math.round((c.cy-best[1])/sp)};
+}
 // Treliça: linhas retas ou diagonais e/ou motivos em grade sobre um fundo. Serve também de miolo da moldura.
 function trelicaCor(c, p, folga){
-  const {cx, cy} = c, s = p.sp;
+  const s = p.sp, h = Math.floor(s/2);
+  // a grade se posiciona pelo motivo principal; sem ele, pelo segundo ou pelo miolo dos losangos, meio passo ao lado
+  let {cx, cy} = c;
+  if(p.motivo) ({cx, cy} = melhorCentro(c, s, MOTIVOS[p.motivo].r, folga));
+  else if(p.motivo2){ const m = melhorCentro(c, s, MOTIVOS[p.motivo2].r, folga); cx = m.cx-h; cy = m.cy-h; }
+  else if(p.dentro){ const m = melhorCentro(c, s, p.r||0, folga); cx = m.cx-h; cy = m.cy; }
   return (i,j)=>{
     const x = i-cx, y = j-cy, dx = Math.abs(x), dy = Math.abs(y);
     if(p.linhas==='diag'){
@@ -844,7 +869,7 @@ function trelicaCor(c, p, folga){
 }
 function mioloCor(c, m, folga){
   if(typeof m==='object') return trelicaCor(c, m, folga);
-  const {cx, cy} = c;
+  const {cx, cy} = m==='pontosAP' ? melhorCentro(c,6,0,folga) : m==='pontosTE'||m==='pontosFE' ? melhorCentro(c,4,0,folga) : c;
   return (i,j)=>{
     if(m==='pontosAP'){ const a = grade(c,i,j,cx,cy,6,'ponto',C.AZ,0,folga); if(a>=0) return a; const b = grade(c,i,j,cx,cy,6,'ponto',C.PE,3,folga); return b>=0 ? b : C.CR; }
     if(m==='pontosTE'){ const a = grade(c,i,j,cx,cy,4,'ponto',C.TE,0,folga); return a>=0 ? a : C.CR; }
