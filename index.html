@@ -52,6 +52,12 @@ button,input{font:inherit;color:inherit}
 .sec h3:first-child{margin-top:0}
 .note{font-size:14px;color:var(--ink2);margin:0 0 12px}
 
+.passos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 24px;padding:0;list-style:none;scroll-margin-top:80px}
+.passo{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--field);cursor:pointer;text-align:left;min-width:0}
+.passo:hover{border-color:#CDBFA9}
+.passo .k{font-size:12px;line-height:1.5;color:var(--ink2)}
+.passo .v{font-size:14px;line-height:1.25;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.passo[aria-current="step"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
 .tabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:16px}
 .tabs button{height:40px;border:0;background:none;padding:0;font-size:14px;color:var(--ink2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
 .tabs button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
@@ -171,17 +177,18 @@ body.embed .stage{aspect-ratio:auto;max-height:none;height:100vh}
 
     <div id="paneDes">
       <section class="sec">
-        <h2>Desenho</h2>
-        <div class="tabs" role="tablist" id="tabs"></div>
-        <div id="designs"></div>
-      </section>
-      <section class="sec">
-        <h2>Hall do banheiro</h2>
-        <div class="tiles" id="halls"></div>
-      </section>
-      <section class="sec" id="secCores">
-        <h2 id="coresTitle">Cores</h2>
-        <div class="tiles" id="schemes"></div>
+        <ol class="passos" id="passos"></ol>
+        <div id="passo1">
+          <div class="tabs" role="tablist" id="tabs"></div>
+          <div id="designs"></div>
+        </div>
+        <div id="passo2" hidden>
+          <p class="note">Como o hall em frente ao banheiro entra no desenho.</p>
+          <div class="tiles" id="halls"></div>
+        </div>
+        <div id="passo3" hidden>
+          <div class="tiles" id="schemes"></div>
+        </div>
       </section>
       <section class="sec">
         <h2>Quantas peças de cada cor</h2>
@@ -1207,10 +1214,12 @@ function renderHall(){
   requestAnimationFrame(()=>$('halls').querySelectorAll('.tile').forEach(b=>drawThumb(b.querySelector('canvas'), d.tipo, v, PALETAS[d.esq].cores, b.dataset.hall, true)));
 }
 $('halls').onclick = e=>{
-  const b = e.target.closest('[data-hall]'); if(!b || b.dataset.hall===S.hall) return;
-  if(!S.design){ S.hall = b.dataset.hall; save(); renderHall(); toast('Vale para o próximo desenho que você escolher.'); return; }
-  pushUndo(); S.hall = b.dataset.hall;
-  const d = S.design; applyDesign(d.tipo, d.n, d.esq, true);
+  const b = e.target.closest('[data-hall]'); if(!b) return;
+  if(b.dataset.hall!==S.hall){
+    if(!S.design){ S.hall = b.dataset.hall; save(); renderTiles(false); toast('Vale para o próximo desenho que você escolher.'); }
+    else { pushUndo(); S.hall = b.dataset.hall; const d = S.design; applyDesign(d.tipo, d.n, d.esq, true); }
+  }
+  setPasso(3);
 };
 function drawCellsThumb(cv, cells, palette){
   const w = cv.clientWidth || 120, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
@@ -1220,7 +1229,7 @@ function drawCellsThumb(cv, cells, palette){
   const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false, 0, true);
   Object.assign(S, keep);
 }
-const tileHTML = (attrs, nome, pressed)=>`<button class="tile" ${attrs} aria-pressed="${!!pressed}" title="${esc(nome)}"><canvas></canvas><span class="nm">${esc(nome)}</span></button>`;
+const tileHTML = (attrs, nome, pressed)=>`<button class="tile" ${attrs} aria-pressed="${!!pressed}"><canvas></canvas><span class="nm">${esc(nome)}</span></button>`;
 function renderTabs(){
   const tabs = [['trelica','Treliça',GENS.trelica.vars.length],['moldura','Moldura',GENS.moldura.vars.length],['pontos','Pontos',GENS.pontos.vars.length],['outros','Outros',null]];
   $('tabs').innerHTML = tabs.map(([id,lab,n])=>`<button role="tab" data-tab="${id}" aria-selected="${tab===id}">${lab}${n?`<span class="cnt">${n}</span>`:''}</button>`).join('');
@@ -1252,13 +1261,33 @@ function renderDesigns(){
 }
 function renderSchemes(){
   const d = des(), g = GENS[d.tipo], v = g.vars[d.n];
-  $('coresTitle').textContent = `Cores para ${g.label} · ${v.nome}`;
   $('schemes').innerHTML = PALETAS.map((p,n)=>tileHTML(`data-esq="${n}"`, p.nome, S.design && d.esq===n)).join('');
   requestAnimationFrame(()=>$('schemes').querySelectorAll('.tile').forEach(b=>drawThumb(b.querySelector('canvas'), d.tipo, v, PALETAS[+b.dataset.esq].cores)));
 }
+// Escolha em três níveis, um de cada vez: padrão, hall, cores. Cada passo mostra o que já está escolhido.
+let passo = 1;
+function renderPassos(){
+  const d = S.design, g = d && GENS[d.tipo];
+  const vals = [d ? g.vars[d.n].nome : 'Desenho seu', {liso:'Liso', junto:'Contorna', separado:'Própria'}[S.hall], d ? PALETAS[d.esq].nome : 'Do desenho'];
+  $('passos').innerHTML = ['Padrão','Hall','Cores'].map((k,n)=>`<li><button class="passo" data-passo="${n+1}" ${passo===n+1?'aria-current="step"':''}><span class="k">${n+1} · ${k}</span><span class="v">${esc(vals[n])}</span></button></li>`).join('');
+}
+function renderPasso(){
+  if(passo===1){ renderTabs(); renderDesigns(); }
+  else if(passo===2) renderHall();
+  else renderSchemes();
+}
+function setPasso(n){
+  passo = n;
+  [1,2,3].forEach(i=>$('passo'+i).hidden = i!==n);
+  renderPassos(); renderPasso();
+  // depois de escolher lá embaixo, volta ao topo dos passos para ver o próximo
+  if($('passos').getBoundingClientRect().top<0) $('passos').scrollIntoView({block:'start', behavior:'smooth'});
+}
+$('passos').onclick = e=>{ const b = e.target.closest('[data-passo]'); if(b) setPasso(+b.dataset.passo); };
 function renderTiles(full){
   if(mode!=='des') return;
-  if(full){ renderTabs(); renderDesigns(); renderHall(); renderSchemes(); return; }
+  renderPassos();
+  if(full){ renderPasso(); return; }
   // só marca a escolha, sem redesenhar
   const d = S.design;
   $('designs').querySelectorAll('[data-tipo]').forEach(b=>b.setAttribute('aria-pressed', !!d && b.dataset.tipo===d.tipo && +b.dataset.n===d.n));
@@ -1267,16 +1296,14 @@ function renderTiles(full){
 }
 let lastDes = '';
 function syncTiles(){
-  // redesenha só o que mudou: trocar de desenho redesenha as cores; trocar de cores redesenha os desenhos
-  // o hall entra nas miniaturas todas, então trocar de hall redesenha tudo
+  // redesenha o passo aberto só se a mudança aparece nas miniaturas dele:
+  // padrões dependem de cores e hall; halls, de padrão e cores; cores, de padrão e hall
   const d = des(), key = `${d.tipo}|${d.n}|${d.esq}|${S.hall}`;
   if(key===lastDes) return renderTiles(false);
   const [t0,n0,e0,h0] = lastDes.split('|'); lastDes = key;
   if(mode!=='des') return;
-  if(h0!==S.hall) return renderTiles(true);
-  if(t0!==d.tipo || +n0!==d.n) renderSchemes(); else renderTiles(false);
-  if(+e0!==d.esq) renderDesigns(); else renderTiles(false);
-  renderHall();
+  const dT = t0!==d.tipo || +n0!==d.n, dE = +e0!==d.esq, dH = h0!==S.hall;
+  renderTiles(passo===1 ? dE||dH : passo===2 ? dT||dE : dT||dH);
 }
 $('designs').onclick = e=>{
   if(e.target.closest('#uplTile')){ $('imgIn').click(); return; }
@@ -1289,6 +1316,7 @@ $('designs').onclick = e=>{
   }
   const b = e.target.closest('[data-tipo]'); if(!b) return;
   applyDesign(b.dataset.tipo, +b.dataset.n, des().esq);
+  setPasso(2);
 };
 $('schemes').onclick = e=>{
   const b = e.target.closest('[data-esq]'); if(!b) return;
