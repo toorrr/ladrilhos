@@ -175,6 +175,10 @@ body.embed .stage{aspect-ratio:auto;max-height:none;height:100vh}
         <div class="tabs" role="tablist" id="tabs"></div>
         <div id="designs"></div>
       </section>
+      <section class="sec">
+        <h2>Hall do banheiro</h2>
+        <div class="tiles" id="halls"></div>
+      </section>
       <section class="sec" id="secCores">
         <h2 id="coresTitle">Cores</h2>
         <div class="tiles" id="schemes"></div>
@@ -304,7 +308,8 @@ const BLOCKS = [
 // Como o hall entra no desenho: 'liso' (uma cor só, a da moldura), 'junto' (a moldura contorna o hall)
 // ou 'separado' (o hall ganha moldura própria). ?hall= na página troca, para a exploração.
 const Q = new URLSearchParams(location.search), EMBED = Q.has('embed');
-const HALL_MODO = ['liso','junto','separado'].includes(Q.get('hall')) ? Q.get('hall') : 'liso';
+const HALLS = [['liso','Liso'],['junto','Moldura contorna'],['separado','Moldura própria']];
+const hallOk = m=>HALLS.some(h=>h[0]===m);
 const DOOR = [86,490];
 const FLOOR_AREA = FLOOR.reduce((a,r)=>a+(r[2]-r[0])*(r[3]-r[1]),0);
 const OUT = 255, MAX_COLORS = 12, HEX = '0123456789abcdef';
@@ -329,7 +334,7 @@ const PALETAS = [
   {nome:'Cinza e mostarda',cores:['#EEEDE8','#D2D0C8','#8E8C86','#55534F','#2F2E2C','#BFC3C2','#D8A535','#E2D9C5']},
 ];
 
-const S = {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:PALETAS[0].cores.slice(), cells:null, plan:true, design:null};
+const S = {grout:2, groutColor:DEFAULT_GROUT_COLOR, origin:'bancada', palette:PALETAS[0].cores.slice(), cells:null, plan:true, design:null, hall:hallOk(Q.get('hall')) ? Q.get('hall') : 'liso'};
 let G = null, cur = 0, tool = 'pincel', brush = 1, mode = 'des', tab = 'trelica';
 const V = {s:1, tx:0, ty:0, fit:1};
 const $ = id => document.getElementById(id);
@@ -359,15 +364,17 @@ function buildGrid(grout, origin, floor=FLOOR){
     // sobra com menos de 3 cm não leva ladrilho: na obra ela some no rejunte e no rodapé
     if(a>30){ inside[k] = 1; total++; all.push(k); if(a<99.5) cut++; }
   }
-  const Gx = {g,p,x0,y0,cols,rows,n,area,inside,hall,total,cut,grout,origin,all};
-  // a moldura conta a distância à parede; no hall 'liso' ele fica de fora, no 'separado' conta à parte
-  const inteiro = all.filter(k=>area[k]>=99.5), sala = inteiro.filter(k=>!hall[k]);
-  if(HALL_MODO==='junto') Gx.dist = distTo(Gx, inteiro);
-  else {
-    Gx.dist = distTo(Gx, sala);
-    if(HALL_MODO==='separado'){ const dh = distTo(Gx, inteiro.filter(k=>hall[k])); for(const k of all) if(hall[k]) Gx.dist[k] = dh[k]; }
-  }
-  return Gx;
+  return {g,p,x0,y0,cols,rows,n,area,inside,hall,total,cut,grout,origin,all};
+}
+// A moldura conta a distância à parede. Hall 'liso': ele fica de fora. 'junto': conta com a sala. 'separado': conta à parte.
+function distHall(Gx, modo){
+  const memo = Gx.dists || (Gx.dists = {});
+  if(memo[modo]) return memo[modo];
+  const inteiro = Gx.all.filter(k=>Gx.area[k]>=99.5);
+  if(modo==='junto') return memo[modo] = distTo(Gx, inteiro);
+  const d = distTo(Gx, inteiro.filter(k=>!Gx.hall[k]));
+  if(modo==='separado'){ const dh = distTo(Gx, inteiro.filter(k=>Gx.hall[k])); for(const k of Gx.all) if(Gx.hall[k]) d[k] = dh[k]; }
+  return memo[modo] = d;
 }
 function cellAtIn(Gx,x,y){
   const i = Math.floor((x-Gx.x0+Gx.g/2)/Gx.p), j = Math.floor((y-Gx.y0+Gx.g/2)/Gx.p);
@@ -402,9 +409,9 @@ function distTo(Gx, tg){
 
 /* ---------- Desfazer ---------- */
 const undoS = [], redoS = [];
-function snap(){ return {grout:S.grout, origin:S.origin, groutColor:S.groutColor, palette:S.palette.slice(), cells:S.cells.slice(), design:S.design}; }
+function snap(){ return {grout:S.grout, origin:S.origin, groutColor:S.groutColor, palette:S.palette.slice(), cells:S.cells.slice(), design:S.design, hall:S.hall}; }
 function restore(sn){
-  S.groutColor = sn.groutColor; S.palette = sn.palette.slice(); S.design = sn.design;
+  S.groutColor = sn.groutColor; S.palette = sn.palette.slice(); S.design = sn.design; S.hall = sn.hall;
   if(sn.grout!==G.grout || sn.origin!==G.origin || sn.cells.length!==G.n){
     S.grout = sn.grout; S.origin = sn.origin; G = buildGrid(S.grout,S.origin);
   }
@@ -848,7 +855,7 @@ function grade(c, i, j, cx, cy, sp, motivo, cor, offset, folga, fora){
 // perto do vazio normal entre dois motivos: nenhum canto do L sobra, e as margens até a moldura ficam iguais.
 // rA: raio do motivo principal (null se não há); rB: raio do segundo, meio passo ao lado (null se não há).
 function melhorGrade(c, sp, rA, rB, folga, estica){
-  const key = [sp,rA,rB,folga,estica].join('|'), memo = G.grades || (G.grades = {});
+  const key = [c.modo,sp,rA,rB,folga,estica].join('|'), memo = G.grades || (G.grades = {});
   if(memo[key]) return memo[key];
   const area = [], bb = [1e9,-1,1e9,-1];
   for(const k of G.all) if(c.dist[k]>=folga){ area.push(k); const i = k%G.cols, j = (k/G.cols)|0; bb[0] = Math.min(bb[0],i); bb[1] = Math.max(bb[1],i); bb[2] = Math.min(bb[2],j); bb[3] = Math.max(bb[3],j); }
@@ -1159,12 +1166,12 @@ function rugBox(m){
   return b;
 }
 // Pinta o desenho no chão todo com as cores da paleta (índices = papéis), sem desfazer nem salvar
-function paint(tipo, v){
+function paint(tipo, v, modo=S.hall){
   const box = rugBox(v.m ?? RUG_MARGIN);
-  const c = {box, dist:G.dist, cx:(box.i0+box.i1)/2, cy:(box.j0+box.j1)/2};
+  const c = {box, modo, dist:distHall(G, modo), cx:(box.i0+box.i1)/2, cy:(box.j0+box.j1)/2};
   const f = GENS[tipo].fn(c, v);
   for(const k of G.all) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
-  if(HALL_MODO==='liso'){
+  if(modo==='liso'){
     // hall numa cor só: a do anel de fora da moldura do desenho
     const a0 = (v.anel || MOLDURAS.fina)[0], cor = typeof a0==='string' ? (C[a0] ?? C.TE) : C[a0.a];
     for(const k of G.all) if(G.hall[k]) S.cells[k] = cor;
@@ -1182,15 +1189,29 @@ function applyDesign(tipo, n, esq, quiet){
 /* ---------- Miniaturas: desenhos e cores ---------- */
 const DEFAULT_DESIGN = {tipo:'moldura', n:0, esq:0};
 const des = ()=>S.design || DEFAULT_DESIGN;
-function drawThumb(cv, tipo, v, cores){
+// perto: a miniatura mostra só o canto do hall, com as paredes, para ver a diferença entre os tratamentos
+const PERTO = [378,184,265];
+function drawThumb(cv, tipo, v, cores, modo=S.hall, perto=false){
   const w = cv.clientWidth || 120, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
   cv.width = Math.round(w*r); cv.height = Math.round(h*r);
   const keep = {cells:S.cells, palette:S.palette, plan:S.plan};
-  S.cells = new Uint8Array(G.n).fill(OUT); S.palette = cores; S.plan = false;
-  paint(tipo, v);
-  const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false, 0, true);
+  S.cells = new Uint8Array(G.n).fill(OUT); S.palette = cores; S.plan = perto;
+  paint(tipo, v, modo);
+  if(perto){ const s = w/PERTO[2]; drawScene(cv.getContext('2d'), s, -PERTO[0]*s, -PERTO[1]*s, r, w, h, false, 12, true); }
+  else { const s = w/(ROOM_W+40); drawScene(cv.getContext('2d'), s, 20*s, 20*s, r, w, h, false, 0, true); }
   Object.assign(S, keep);
 }
+function renderHall(){
+  const d = des(), v = GENS[d.tipo].vars[d.n];
+  $('halls').innerHTML = HALLS.map(([m,nome])=>tileHTML(`data-hall="${m}"`, nome, S.hall===m)).join('');
+  requestAnimationFrame(()=>$('halls').querySelectorAll('.tile').forEach(b=>drawThumb(b.querySelector('canvas'), d.tipo, v, PALETAS[d.esq].cores, b.dataset.hall, true)));
+}
+$('halls').onclick = e=>{
+  const b = e.target.closest('[data-hall]'); if(!b || b.dataset.hall===S.hall) return;
+  if(!S.design){ S.hall = b.dataset.hall; save(); renderHall(); toast('Vale para o próximo desenho que você escolher.'); return; }
+  pushUndo(); S.hall = b.dataset.hall;
+  const d = S.design; applyDesign(d.tipo, d.n, d.esq, true);
+};
 function drawCellsThumb(cv, cells, palette){
   const w = cv.clientWidth || 120, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
   cv.width = Math.round(w*r); cv.height = Math.round(h*r);
@@ -1237,21 +1258,25 @@ function renderSchemes(){
 }
 function renderTiles(full){
   if(mode!=='des') return;
-  if(full){ renderTabs(); renderDesigns(); renderSchemes(); return; }
+  if(full){ renderTabs(); renderDesigns(); renderHall(); renderSchemes(); return; }
   // só marca a escolha, sem redesenhar
   const d = S.design;
   $('designs').querySelectorAll('[data-tipo]').forEach(b=>b.setAttribute('aria-pressed', !!d && b.dataset.tipo===d.tipo && +b.dataset.n===d.n));
   $('schemes').querySelectorAll('[data-esq]').forEach(b=>b.setAttribute('aria-pressed', !!d && +b.dataset.esq===d.esq));
+  $('halls').querySelectorAll('[data-hall]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.hall===S.hall));
 }
 let lastDes = '';
 function syncTiles(){
   // redesenha só o que mudou: trocar de desenho redesenha as cores; trocar de cores redesenha os desenhos
-  const d = des(), key = `${d.tipo}|${d.n}|${d.esq}`;
+  // o hall entra nas miniaturas todas, então trocar de hall redesenha tudo
+  const d = des(), key = `${d.tipo}|${d.n}|${d.esq}|${S.hall}`;
   if(key===lastDes) return renderTiles(false);
-  const [t0,n0,e0] = lastDes.split('|'); lastDes = key;
+  const [t0,n0,e0,h0] = lastDes.split('|'); lastDes = key;
   if(mode!=='des') return;
+  if(h0!==S.hall) return renderTiles(true);
   if(t0!==d.tipo || +n0!==d.n) renderSchemes(); else renderTiles(false);
   if(+e0!==d.esq) renderDesigns(); else renderTiles(false);
+  renderHall();
 }
 $('designs').onclick = e=>{
   if(e.target.closest('#uplTile')){ $('imgIn').click(); return; }
@@ -1383,7 +1408,7 @@ function store(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ ret
 function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function toObj(){
   let c = ''; for(const k of G.all) c += HEX[S.cells[k]];
-  return {app:'ladrilhos-sala', v:1, grout:S.grout, groutColor:S.groutColor, origin:S.origin, palette:S.palette.slice(), plan:S.plan, cells:c, design:S.design};
+  return {app:'ladrilhos-sala', v:1, grout:S.grout, groutColor:S.groutColor, origin:S.origin, palette:S.palette.slice(), plan:S.plan, cells:c, design:S.design, hall:S.hall};
 }
 function fromObj(o){
   if(!o || !Array.isArray(o.palette) || typeof o.cells!=='string') throw new Error('formato');
@@ -1405,6 +1430,7 @@ function fromObj(o){
   if(typeof o.plan==='boolean') S.plan = o.plan;
   const d = o.design;
   S.design = d && GENS[d.tipo] && GENS[d.tipo].vars[d.n] && PALETAS[d.esq] ? {tipo:d.tipo, n:+d.n, esq:+d.esq} : null;
+  if(hallOk(o.hall)) S.hall = o.hall;
   G = NG; S.cells = nc;
   if(cur>=pal.length) cur = 0;
 }
@@ -1535,7 +1561,7 @@ async function boot(){
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
   if(!loaded){ regrid(null,null); applyDesign(DEFAULT_DESIGN.tipo, DEFAULT_DESIGN.n, DEFAULT_DESIGN.esq, true); }
   if(S.design) tab = S.design.tipo in {trelica:1, moldura:1, pontos:1} ? S.design.tipo : 'outros';
-  const d = des(); lastDes = `${d.tipo}|${d.n}|${d.esq}`;
+  const d = des(); lastDes = `${d.tipo}|${d.n}|${d.esq}|${S.hall}`;
   syncControls(); updPalette(); updTools(); updUndo(); setMode('des');
   new ResizeObserver(resize).observe(vp); resize();
 }
