@@ -123,6 +123,9 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);background:var(--ink);color:#fff;font-size:14px;padding:12px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);z-index:30}
 .toast.show{opacity:1;transform:translateX(-50%)}
 
+body.embed .top,body.embed .side,body.embed .zoom{display:none}
+body.embed .app{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"stage";height:100vh}
+body.embed .stage{aspect-ratio:auto;max-height:none;height:100vh}
 @media (max-width:860px){
   .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;grid-template-areas:"top" "stage" "side";height:auto}
   .top{padding:12px 16px;position:sticky;top:0;z-index:5}
@@ -286,13 +289,22 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 'use strict';
 /* ---------- Planta (cm). Origem: canto interno de cima à esquerda ---------- */
 const ROOM_W = 571, ROOM_H = 490, WALL = 15;
-// Chão à vista: sala menos escada, bancada e o canto do banheiro (25,25 m² na planta)
-const FLOOR = [[105,0,466,60],[70,60,466,259],[70,259,571,490]];
+// Chão à vista: sala menos escada, bancada, banheiro e o bloco ao lado do hall.
+// Planta de 29/10: mini hall em frente à porta do banheiro e um bloco de ~37 cm na parede da direita.
+// As medidas do hall e do bloco foram tiradas da imagem da planta, pela escala do resto (não há cotas).
+const FLOOR_V1 = [[105,0,466,60],[70,60,466,259],[70,259,571,490]];
+const HALL = [466,259,571,339];
+const FLOOR = [[105,0,466,60],[70,60,466,339],[70,339,534,490],HALL];
 const BLOCKS = [
   {label:'Escada', rects:[[0,0,105,60],[0,60,70,180]]},
   {label:'Bancada', rects:[[0,180,70,490]]},
   {label:'Banheiro', rects:[[466,0,571,259]]},
+  {label:'', rects:[[534,339,571,490]]},
 ];
+// Como o hall entra no desenho: 'liso' (uma cor só, a da moldura), 'junto' (a moldura contorna o hall)
+// ou 'separado' (o hall ganha moldura própria). ?hall= na página troca, para a exploração.
+const Q = new URLSearchParams(location.search), EMBED = Q.has('embed');
+const HALL_MODO = ['liso','junto','separado'].includes(Q.get('hall')) ? Q.get('hall') : 'liso';
 const DOOR = [86,490];
 const FLOOR_AREA = FLOOR.reduce((a,r)=>a+(r[2]-r[0])*(r[3]-r[1]),0);
 const OUT = 255, MAX_COLORS = 12, HEX = '0123456789abcdef';
@@ -325,7 +337,7 @@ const cv = $('cv'), vp = $('vp'), ctx = cv.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 
 /* ---------- Grade ---------- */
-function buildGrid(grout, origin){
+function buildGrid(grout, origin, floor=FLOOR){
   const g = grout/10, p = 10+g;
   let ax, ay;
   if(origin==='centro'){ ax = (70+ROOM_W)/2-5; ay = ROOM_H/2-5; }
@@ -334,20 +346,27 @@ function buildGrid(grout, origin){
   const jmin = Math.floor((-10-ay)/p), jmax = Math.ceil((ROOM_H-ay)/p);
   const cols = imax-imin+1, rows = jmax-jmin+1, n = cols*rows;
   const x0 = ax+imin*p, y0 = ay+jmin*p;
-  const area = new Float32Array(n), inside = new Uint8Array(n), all = [];
+  const area = new Float32Array(n), inside = new Uint8Array(n), hall = new Uint8Array(n), all = [];
   let total = 0, cut = 0;
   for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){
     const tx = x0+i*p, ty = y0+j*p; let a = 0;
-    for(const r of FLOOR){
+    for(const r of floor){
       const w = Math.min(tx+10,r[2])-Math.max(tx,r[0]), h = Math.min(ty+10,r[3])-Math.max(ty,r[1]);
       if(w>0&&h>0) a += w*h;
     }
     const k = j*cols+i; area[k] = a;
+    if(tx+5>HALL[0] && tx+5<HALL[2] && ty+5>HALL[1] && ty+5<HALL[3]) hall[k] = 1;
     // sobra com menos de 3 cm não leva ladrilho: na obra ela some no rejunte e no rodapé
     if(a>30){ inside[k] = 1; total++; all.push(k); if(a<99.5) cut++; }
   }
-  const Gx = {g,p,x0,y0,cols,rows,n,area,inside,total,cut,grout,origin,all};
-  Gx.dist = distTo(Gx, all.filter(k=>area[k]>=99.5));
+  const Gx = {g,p,x0,y0,cols,rows,n,area,inside,hall,total,cut,grout,origin,all};
+  // a moldura conta a distância à parede; no hall 'liso' ele fica de fora, no 'separado' conta à parte
+  const inteiro = all.filter(k=>area[k]>=99.5), sala = inteiro.filter(k=>!hall[k]);
+  if(HALL_MODO==='junto') Gx.dist = distTo(Gx, inteiro);
+  else {
+    Gx.dist = distTo(Gx, sala);
+    if(HALL_MODO==='separado'){ const dh = distTo(Gx, inteiro.filter(k=>hall[k])); for(const k of all) if(hall[k]) Gx.dist[k] = dh[k]; }
+  }
   return Gx;
 }
 function cellAtIn(Gx,x,y){
@@ -445,6 +464,7 @@ function drawLabels(c, s, tx, ty, ratio, fs){
   c.font = `600 ${fs}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
   c.fillStyle = C_BLOCK_LABEL; c.textAlign = 'center'; c.textBaseline = 'middle';
   for(const b of BLOCKS){
+    if(!b.label) continue;
     const r = b.rects[0];
     const cx = ((r[0]+r[2])/2)*s+tx, cy = ((r[1]+r[3])/2)*s+ty;
     const w = (r[2]-r[0])*s, tw = c.measureText(b.label).width;
@@ -905,8 +925,36 @@ function trelicaCor(c, p, folga){
     return textura(p.fundo||'creme',dx,dy);
   };
 }
+// Canto da moldura: os dois primeiros anéis no bico de um canto (a 2 ladrilhos da parede nos dois sentidos)
+function canto(c, i, j){
+  const fora = (x,y)=>x<0||y<0||x>=G.cols||y>=G.rows||c.dist[y*G.cols+x]<0;
+  return (fora(i-2,j)||fora(i+2,j)) && (fora(i,j-2)||fora(i,j+2));
+}
+// Tapete de pontos: um campo miúdo, um centro em xadrez, acentos ao longo da moldura e quatro motivos nas diagonais
+function tapeteCor(c, m, folga){
+  const {cx, cy} = c, R = m.R ?? Math.max(3, Math.round(Math.min(c.box.i1-c.box.i0, c.box.j1-c.box.j0)/4)), s = R+3;
+  const sat = [[1,1],[1,-1],[-1,1],[-1,-1]].filter(([a,b])=>cabe(c, cx+a*s, cy+b*s, 1, folga)).map(([a,b])=>cx+a*s+','+(cy+b*s));
+  return (i,j,k)=>{
+    const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
+    if(m.acentos && c.dist[k]===folga-1 && near(tangente(c,k,i,j),4)===0) return C.AZ;
+    if(m.satelites){
+      const si = i>=cx ? cx+s : cx-s, sj = j>=cy ? cy+s : cy-s, a = Math.abs(i-si), b = Math.abs(j-sj);
+      if(a<=1 && b<=1 && sat.includes(si+','+sj)) return a+b===0 ? C.AZ : a+b===1 ? C.MO : C.TE;
+    }
+    const dentro = m.centro==='losango' ? dx+dy<=R : m.centro==='quadrado' ? Math.max(dx,dy)<=R : false;
+    if(dentro){
+      if(m.centroCor==='liso') return (m.centro==='losango' ? dx+dy===R : Math.max(dx,dy)===R) ? C.TE : C.CR;
+      return (dx+dy)%2 ? (m.centroCor==='xadrezMO' ? C.MO : C.TE) : C.CR;
+    }
+    if(m.campo==='pontos') return dx%2===1 && dy%2===1 ? C.TE : C.CR;
+    if(m.campo==='xadrez') return (dx+dy)%2 ? C.TE : C.CR;
+    if(m.campo==='listras') return dy%2 ? C.TE : C.CR;
+    if(m.campo==='cruzes') return (near(dx,4)===0 && near(dy,4)<=1) || (near(dy,4)===0 && near(dx,4)<=1) ? C.TE : C.CR;
+    return C.CR;
+  };
+}
 function mioloCor(c, m, folga){
-  if(typeof m==='object') return trelicaCor(c, m, folga);
+  if(typeof m==='object') return m.tapete ? tapeteCor(c, m, folga) : trelicaCor(c, m, folga);
   const L = m==='pontosAP' ? melhorGrade(c,6,0,0,folga,true) : m==='pontosTE'||m==='pontosFE' ? melhorGrade(c,4,0,null,folga,true) : {cx:c.cx, cy:c.cy, sx:4, sy:4};
   const {cx, cy} = L, sp = [L.sx, L.sy];
   return (i,j)=>{
@@ -960,8 +1008,23 @@ const GENS = {
     ],
     fn(c, p){
       const A = aneis(p.anel), mi = mioloCor(c, p.miolo, A.length+2);
-      return (k,i,j)=>{ const f = anelMoldura(c,k,i,j,A); return f>=0 ? f : mi(i,j); };
+      return (k,i,j)=>{
+        if(p.cantos && c.dist[k]>=0 && c.dist[k]<=1 && canto(c,i,j)) return C[p.cantos];
+        const f = anelMoldura(c,k,i,j,A); return f>=0 ? f : mi(i,j,k);
+      };
     }},
+  pontos:{label:'Pontos',
+    vars:[
+      {nome:'Casa portuguesa', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'losango', centroCor:'xadrez', acentos:1, satelites:1}},
+      {nome:'Quadrado xadrez', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'quadrado', centroCor:'xadrez', acentos:1}},
+      {nome:'Losango liso', anel:['CH','TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','CR'], cantos:'CH', miolo:{tapete:1, campo:'xadrez', centro:'losango', centroCor:'liso', satelites:1}},
+      {nome:'Listrado', anel:['TE','TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'listras', centro:'losango', centroCor:'xadrez', acentos:1}},
+      {nome:'Cruzinhas', anel:['FE',{t:'xadrez',w:1,a:'CH',b:'FE'},'FE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'cruzes', centro:'quadrado', centroCor:'xadrezMO', acentos:1, satelites:1}},
+      {nome:'Só pontos', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', acentos:1}},
+      {nome:'Xadrez mel', anel:['FE','FE','XZ','CR'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'losango', centroCor:'xadrezMO', satelites:1}},
+      {nome:'Moldura escura', anel:['CH','CH',{t:'xadrez',w:1,a:'MO',b:'CH'},'CH','CR'], cantos:'MO', miolo:{tapete:1, campo:'pontos', centro:'quadrado', centroCor:'liso', acentos:1, satelites:1}},
+    ],
+    fn(c, p){ return GENS.moldura.fn(c, p); }},
   tapete:{label:'Tapete', outro:true,
     vars:[
       {nome:'Clássico', m:5, borda:'cruzes', campo:'xadrez', centro:'losango', D:7, fora:'cruzes', moldura:'fina'},
@@ -1101,6 +1164,11 @@ function paint(tipo, v){
   const c = {box, dist:G.dist, cx:(box.i0+box.i1)/2, cy:(box.j0+box.j1)/2};
   const f = GENS[tipo].fn(c, v);
   for(const k of G.all) S.cells[k] = f(k, k%G.cols, (k/G.cols)|0);
+  if(HALL_MODO==='liso'){
+    // hall numa cor só: a do anel de fora da moldura do desenho
+    const a0 = (v.anel || MOLDURAS.fina)[0], cor = typeof a0==='string' ? (C[a0] ?? C.TE) : C[a0.a];
+    for(const k of G.all) if(G.hall[k]) S.cells[k] = cor;
+  }
 }
 function applyDesign(tipo, n, esq, quiet){
   if(!quiet) pushUndo();
@@ -1133,7 +1201,7 @@ function drawCellsThumb(cv, cells, palette){
 }
 const tileHTML = (attrs, nome, pressed)=>`<button class="tile" ${attrs} aria-pressed="${!!pressed}" title="${esc(nome)}"><canvas></canvas><span class="nm">${esc(nome)}</span></button>`;
 function renderTabs(){
-  const tabs = [['trelica','Treliça',GENS.trelica.vars.length],['moldura','Moldura',GENS.moldura.vars.length],['outros','Outros',null]];
+  const tabs = [['trelica','Treliça',GENS.trelica.vars.length],['moldura','Moldura',GENS.moldura.vars.length],['pontos','Pontos',GENS.pontos.vars.length],['outros','Outros',null]];
   $('tabs').innerHTML = tabs.map(([id,lab,n])=>`<button role="tab" data-tab="${id}" aria-selected="${tab===id}">${lab}${n?`<span class="cnt">${n}</span>`:''}</button>`).join('');
 }
 $('tabs').onclick = e=>{ const b = e.target.closest('[data-tab]'); if(b){ tab = b.dataset.tab; renderTabs(); renderDesigns(); } };
@@ -1321,10 +1389,18 @@ function fromObj(o){
   if(!o || !Array.isArray(o.palette) || typeof o.cells!=='string') throw new Error('formato');
   const pal = o.palette.filter(h=>/^#[0-9a-f]{6}$/i.test(h)).slice(0,MAX_COLORS);
   if(pal.length<1) throw new Error('cores');
-  const NG = buildGrid(+o.grout||2, o.origin==='centro'?'centro':'bancada');
-  if(o.cells.length!==NG.total) throw new Error('tamanho');
-  const nc = new Uint8Array(NG.n).fill(OUT); let p = 0;
-  for(const k of NG.all){ const v = HEX.indexOf(o.cells[p++]); nc[k] = v>=0 && v<pal.length ? v : 0; }
+  const gr = +o.grout||2, og = o.origin==='centro'?'centro':'bancada', NG = buildGrid(gr, og);
+  let nc = new Uint8Array(NG.n).fill(OUT), p = 0;
+  if(o.cells.length===NG.total){
+    for(const k of NG.all){ const v = HEX.indexOf(o.cells[p++]); nc[k] = v>=0 && v<pal.length ? v : 0; }
+  } else {
+    // desenho feito na planta antiga: cada ladrilho pega a cor do que estava no mesmo lugar
+    const OG = buildGrid(gr, og, FLOOR_V1);
+    if(o.cells.length!==OG.total) throw new Error('tamanho');
+    const oc = new Uint8Array(OG.n).fill(OUT);
+    for(const k of OG.all){ const v = HEX.indexOf(o.cells[p++]); oc[k] = v>=0 && v<pal.length ? v : 0; }
+    for(const k of NG.all){ const i = k%NG.cols, j = (k/NG.cols)|0, q = cellAtIn(OG, NG.x0+i*NG.p+5, NG.y0+j*NG.p+5); nc[k] = q>=0 ? oc[q] : 0; }
+  }
   S.grout = NG.grout; S.origin = NG.origin; S.palette = pal; S.groutColor = /^#[0-9a-f]{6}$/i.test(o.groutColor) ? o.groutColor : S.groutColor;
   if(typeof o.plan==='boolean') S.plan = o.plan;
   const d = o.design;
@@ -1333,7 +1409,7 @@ function fromObj(o){
   if(cur>=pal.length) cur = 0;
 }
 let saveT = 0;
-function save(){ clearTimeout(saveT); saveT = setTimeout(()=>store(KEY_CUR, JSON.stringify(toObj())), 400); }
+function save(){ if(EMBED) return; clearTimeout(saveT); saveT = setTimeout(()=>store(KEY_CUR, JSON.stringify(toObj())), 400); }
 function changed(full){
   if(full) syncControls();
   updPalette(); render(); save(); syncTiles();
@@ -1434,6 +1510,14 @@ function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('sho
 async function boot(){
   buildTools();
   let loaded = false;
+  // ?embed&d=tipo.n.paleta: só o chão, com esse desenho (para a exploração), sem ler nem gravar nada
+  if(EMBED){
+    document.body.classList.add('embed');
+    const [t,n,e] = (Q.get('d')||'').split('.');
+    regrid(null,null);
+    if(GENS[t] && GENS[t].vars[+n] && PALETAS[+e]) applyDesign(t, +n, +e, true); else applyDesign(DEFAULT_DESIGN.tipo, DEFAULT_DESIGN.n, DEFAULT_DESIGN.esq, true);
+    S.plan = true; loaded = true;
+  }
   const h = location.hash.match(/^#d=([rz][\w-]+)/);
   if(h){
     try{
@@ -1450,7 +1534,7 @@ async function boot(){
   }
   if(!loaded){ const prev = load(KEY_CUR); if(prev){ try{ fromObj(JSON.parse(prev)); loaded = true; }catch(e){} } }
   if(!loaded){ regrid(null,null); applyDesign(DEFAULT_DESIGN.tipo, DEFAULT_DESIGN.n, DEFAULT_DESIGN.esq, true); }
-  if(S.design) tab = S.design.tipo in {trelica:1, moldura:1} ? S.design.tipo : 'outros';
+  if(S.design) tab = S.design.tipo in {trelica:1, moldura:1, pontos:1} ? S.design.tipo : 'outros';
   const d = des(); lastDes = `${d.tipo}|${d.n}|${d.esq}`;
   syncControls(); updPalette(); updTools(); updUndo(); setMode('des');
   new ResizeObserver(resize).observe(vp); resize();
