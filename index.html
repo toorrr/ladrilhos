@@ -944,26 +944,84 @@ function canto(c, i, j){
   const fora = (x,y)=>x<0||y<0||x>=G.cols||y>=G.rows||c.dist[y*G.cols+x]<0;
   return (fora(i-2,j)||fora(i+2,j)) && (fora(i,j-2)||fora(i,j+2));
 }
-// Tapete de pontos: um campo miúdo, um centro em xadrez, acentos ao longo da moldura e quatro motivos nas diagonais
+// Tapete de pontos: camadas que se somam por cima de um campo miúdo, da parede para o centro:
+// acentos ao longo da moldura, filete interno, leques nos cantos do campo, motivos em volta do centro e o centro.
 function tapeteCor(c, m, folga){
-  const {cx, cy} = c, R = m.R ?? Math.max(3, Math.round(Math.min(c.box.i1-c.box.i0, c.box.j1-c.box.j0)/4)), s = R+3;
-  const sat = [[1,1],[1,-1],[-1,1],[-1,-1]].filter(([a,b])=>cabe(c, cx+a*s, cy+b*s, 1, folga)).map(([a,b])=>cx+a*s+','+(cy+b*s));
+  const {cx, cy} = c, base = Math.min(c.box.i1-c.box.i0, c.box.j1-c.box.j0);
+  const R = m.R ?? Math.max(3, Math.round(base/(m.div||4))), s = R+(m.satTam||1)+2, sr = m.satTam||1;
+  const ok = (x,y)=>x>=0&&y>=0&&x<G.cols&&y<G.rows&&c.dist[y*G.cols+x]>=folga;
+  const Q = m.Q ?? Math.max(3, Math.round(base/7));
+  const dentro = (dx,dy)=>{
+    switch(m.centro){
+      case 'losango': case 'camadas': return dx+dy<=R;
+      case 'quadrado': return Math.max(dx,dy)<=R;
+      case 'estrela': return Math.max(dx,dy)<=Math.round(R*.62) || dx+dy<=R;
+      case 'cruz': { const w = Math.max(1, Math.round(R/3)); return (dx<=w && dy<=R) || (dy<=w && dx<=R); }
+      case 'roseta': return dx*dx+dy*dy<=R*R+R;
+    }
+    return false;
+  };
+  // nenhum motivo sai cortado nem encosta em outro: cada um só entra se couber inteiro, com um ladrilho de folga
+  const ocupado = new Uint8Array(G.n), f0 = folga + (m.filete ? m.filete+2 : 0);
+  // motivos ficam do lado de dentro do filete, para a linha não os atravessar
+  const okM = (x,y)=>x>=0&&y>=0&&x<G.cols&&y<G.rows&&c.dist[y*G.cols+x]>=f0;
+  const livre = cel=>cel.every(([x,y])=>okM(x,y) && !ocupado[y*G.cols+x] && !dentro(Math.abs(x-cx)-1<0?0:Math.abs(x-cx)-1, Math.abs(y-cy)-1<0?0:Math.abs(y-cy)-1));
+  const marca = (cel, f=1)=>{ for(const [x,y] of cel) for(let b=-f;b<=f;b++) for(let a=-f;a<=f;a++){ const xx = x+a, yy = y+b; if(xx>=0&&yy>=0&&xx<G.cols&&yy<G.rows) ocupado[yy*G.cols+xx] = 1; } };
+  // motivos em volta do centro: nas diagonais e, se pedido, nos eixos
+  const pos = [[1,1],[1,-1],[-1,1],[-1,-1]].map(([a,b])=>[cx+a*s, cy+b*s]);
+  if(m.eixos){ const e = R+sr+3; pos.push([cx+e,cy],[cx-e,cy],[cx,cy+e],[cx,cy-e]); }
+  const quadrado = (x,y,r)=>{ const cel = []; for(let b=-r;b<=r;b++) for(let a=-r;a<=r;a++) cel.push([x+a,y+b]); return cel; };
+  const sat = [];
+  // os leques entram primeiro (cantos), depois os motivos do centro, sempre sem se sobrepor
+  // cantos de dentro do campo (só os que apontam para fora, como os cantos de uma sala)
+  const cantos = [];
+  if(m.leque) for(const k of G.all){
+    const i = k%G.cols, j = (k/G.cols)|0; if(!okM(i,j)) continue;
+    for(const [sx,sy] of [[1,1],[-1,1],[1,-1],[-1,-1]]){
+      if(okM(i-sx,j) || okM(i,j-sy)) continue;
+      const cel = []; for(let b=0;b<=Q;b++) for(let a=0;a+b<=Q;a++) cel.push([i+a*sx, j+b*sy]);
+      if(livre(cel)){ cantos.push([i,j,sx,sy]); marca(cel); }
+    }
+  }
+  if(m.satelites) for(const [x,y] of pos){ const cel = quadrado(x,y,sr); if(livre(cel)){ sat.push([x,y]); marca(cel); } }
   return (i,j,k)=>{
-    const dx = Math.abs(i-cx), dy = Math.abs(j-cy);
-    if(m.acentos && c.dist[k]===folga-1 && near(tangente(c,k,i,j),4)===0) return C.AZ;
-    if(m.satelites){
-      const si = i>=cx ? cx+s : cx-s, sj = j>=cy ? cy+s : cy-s, a = Math.abs(i-si), b = Math.abs(j-sj);
-      if(a<=1 && b<=1 && sat.includes(si+','+sj)) return a+b===0 ? C.AZ : a+b===1 ? C.MO : C.TE;
+    const dx = Math.abs(i-cx), dy = Math.abs(j-cy), w = c.dist[k];
+    if(m.acentos && w===folga-1 && near(tangente(c,k,i,j),4)===0) return C.AZ;
+    if(m.filete && w===folga+m.filete) return m.fileteP && near(tangente(c,k,i,j),2)===0 ? C.CR : C[m.fileteCor||'MO'];
+    for(const [ci,cj,sx,sy] of cantos){
+      const a = (i-ci)*sx, b = (j-cj)*sy;
+      if(a<0 || b<0 || a+b>Q) continue;
+      const d = a+b;
+      if(m.leque==='quadrante'){ if(Math.max(a,b)>Q-1) continue; return Math.max(a,b)===Q-1 ? C.CH : (a+b)%2 ? C.MO : C.CR; }
+      return d===Q ? C.CH : d===0 ? C.AZ : d%2 ? C.MO : C.TE;
     }
-    const dentro = m.centro==='losango' ? dx+dy<=R : m.centro==='quadrado' ? Math.max(dx,dy)<=R : false;
-    if(dentro){
-      if(m.centroCor==='liso') return (m.centro==='losango' ? dx+dy===R : Math.max(dx,dy)===R) ? C.TE : C.CR;
-      return (dx+dy)%2 ? (m.centroCor==='xadrezMO' ? C.MO : C.TE) : C.CR;
+    for(const [x,y] of sat){
+      const a = Math.abs(i-x), b = Math.abs(j-y); if(a>sr || b>sr) continue;
+      if(sr===1) return a+b===0 ? C.AZ : a+b===1 ? C.MO : C.TE;
+      return a+b===0 ? C.AZ : a+b===1 ? C.MO : a+b===2 ? C.TE : a===b ? C.CH : C.CR;
     }
-    if(m.campo==='pontos') return dx%2===1 && dy%2===1 ? C.TE : C.CR;
-    if(m.campo==='xadrez') return (dx+dy)%2 ? C.TE : C.CR;
-    if(m.campo==='listras') return dy%2 ? C.TE : C.CR;
-    if(m.campo==='cruzes') return (near(dx,4)===0 && near(dy,4)<=1) || (near(dy,4)===0 && near(dx,4)<=1) ? C.TE : C.CR;
+    if(dentro(dx,dy)){
+      // contorno do centro: o ladrilho de dentro que encosta no de fora
+      if(m.contorno!==false && (!dentro(dx+1,dy) || !dentro(dx,dy+1))) return C.CH;
+      const d = dx+dy;
+      if(d<=1) return d===0 ? C.AZ : C.MO;
+      switch(m.centro){
+        case 'camadas': { const band = Math.floor((d-2)/3)%3, r = (d-2)%3; return r===2 ? C.CH : band===0 ? ((dx+dy)%2 ? C.TE : C.CR) : band===1 ? C.MO : (dx%2&&dy%2 ? C.TE : C.CR); }
+        case 'estrela': return dx+dy<=Math.round(R/2) ? ((dx+dy)%2 ? C.TE : C.CR) : (dx+dy)%2 ? C.MO : C.CR;
+        case 'cruz': return Math.max(dx,dy)%2 ? C.TE : C.CR;
+        case 'roseta': { const e = Math.floor(Math.sqrt(dx*dx+dy*dy)); return e%3===0 ? C.TE : e%3===1 ? C.CR : ((dx+dy)%2 ? C.MO : C.CR); }
+      }
+      return (dx+dy)%2 ? C[m.centroCor||'TE'] : C.CR;
+    }
+    switch(m.campo){
+      case 'pontos': return dx%2===1 && dy%2===1 ? C.TE : C.CR;
+      case 'pontos2': return dx%2===1 && dy%2===1 ? ((Math.floor(dx/2)+Math.floor(dy/2))%2 ? C.MO : C.TE) : C.CR;
+      case 'xadrez': return (dx+dy)%2 ? C.TE : C.CR;
+      case 'listras': return dy%2 ? C.TE : C.CR;
+      case 'cruzes': return (near(dx,4)===0 && near(dy,4)<=1) || (near(dy,4)===0 && near(dx,4)<=1) ? C.TE : C.CR;
+      case 'diagonal': { const u = mod(dx+dy,4), v = mod(dx-dy,4); return u===0||v===0 ? C.TE : u===2&&v===2 ? C.MO : C.CR; }
+      case 'escuro': return dx%2===1 && dy%2===1 ? C.MO : C.CH;
+    }
     return C.CR;
   };
 }
@@ -1029,14 +1087,18 @@ const GENS = {
     }},
   pontos:{label:'Pontos',
     vars:[
-      {nome:'Casa portuguesa', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'losango', centroCor:'xadrez', acentos:1, satelites:1}},
-      {nome:'Quadrado xadrez', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'quadrado', centroCor:'xadrez', acentos:1}},
-      {nome:'Losango liso', anel:['CH','TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','CR'], cantos:'CH', miolo:{tapete:1, campo:'xadrez', centro:'losango', centroCor:'liso', satelites:1}},
-      {nome:'Listrado', anel:['TE','TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'listras', centro:'losango', centroCor:'xadrez', acentos:1}},
-      {nome:'Cruzinhas', anel:['FE',{t:'xadrez',w:1,a:'CH',b:'FE'},'FE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'cruzes', centro:'quadrado', centroCor:'xadrezMO', acentos:1, satelites:1}},
-      {nome:'Só pontos', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', acentos:1}},
-      {nome:'Xadrez mel', anel:['FE','FE','XZ','CR'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'losango', centroCor:'xadrezMO', satelites:1}},
-      {nome:'Moldura escura', anel:['CH','CH',{t:'xadrez',w:1,a:'MO',b:'CH'},'CH','CR'], cantos:'MO', miolo:{tapete:1, campo:'pontos', centro:'quadrado', centroCor:'liso', acentos:1, satelites:1}},
+      {nome:'Casa portuguesa', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'losango', contorno:false, acentos:1, satelites:1}},
+      {nome:'Estrela', anel:['CH','TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','CR'], cantos:'CH', miolo:{tapete:1, campo:'pontos2', centro:'estrela', div:3, filete:2, satelites:1, satTam:2}},
+      {nome:'Camadas', anel:['TE','TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'diagonal', centro:'camadas', div:2.6}},
+      {nome:'Roseta', anel:['FE',{t:'dentes',w:3,a:'TE',b:'CR'},'FE','CR'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'roseta', div:3.4, acentos:1, satelites:1, eixos:1}},
+      {nome:'Cruz central', anel:['CH',{t:'xadrez',w:1,a:'MO',b:'CH'},'CH','CR'], cantos:'MO', miolo:{tapete:1, campo:'pontos2', centro:'cruz', div:2.8, filete:2, fileteP:1, satelites:1}},
+      {nome:'Tapete duplo', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'xadrez', centro:'losango', centroCor:'MO', filete:3, fileteCor:'CH', fileteP:1, acentos:1}},
+      {nome:'Oito rosetas', anel:['FE','FE',{t:'losangos',w:3,a:'TE',b:'CR'},'FE','CR'], cantos:'CH', miolo:{tapete:1, campo:'pontos', centro:'losango', R:3, satelites:1, eixos:1, satTam:2}},
+      {nome:'Medalhão quadrado', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','CR'], cantos:'CH', miolo:{tapete:1, campo:'cruzes', centro:'quadrado', centroCor:'MO', div:3.2, filete:2}},
+      {nome:'Azulejo', anel:['CH','CR',{t:'cruzes',w:3,a:'TE',b:'CR'},'CR','CH'], cantos:'MO', miolo:{tapete:1, campo:'diagonal', centro:'estrela', div:3, acentos:1, satelites:1}},
+      {nome:'Noturno', anel:['MO',{t:'xadrez',w:1,a:'CH',b:'MO'},'MO','CR'], cantos:'CH', miolo:{tapete:1, campo:'escuro', centro:'roseta', div:3, satelites:1, satTam:2}},
+      {nome:'Só pontos', anel:['TE',{t:'xadrez',w:1,a:'CH',b:'TE'},'TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'pontos2', filete:2, fileteP:1, acentos:1, satelites:1, eixos:1, R:2}},
+      {nome:'Listrado', anel:['TE','TE','XZ'], cantos:'CH', miolo:{tapete:1, campo:'listras', centro:'camadas', div:3, acentos:1}},
     ],
     fn(c, p){ return GENS.moldura.fn(c, p); }},
   tapete:{label:'Tapete', outro:true,
@@ -1214,12 +1276,9 @@ function renderHall(){
   requestAnimationFrame(()=>$('halls').querySelectorAll('.tile').forEach(b=>drawThumb(b.querySelector('canvas'), d.tipo, v, PALETAS[d.esq].cores, b.dataset.hall, true)));
 }
 $('halls').onclick = e=>{
-  const b = e.target.closest('[data-hall]'); if(!b) return;
-  if(b.dataset.hall!==S.hall){
-    if(!S.design){ S.hall = b.dataset.hall; save(); renderTiles(false); toast('Vale para o próximo desenho que você escolher.'); }
-    else { pushUndo(); S.hall = b.dataset.hall; const d = S.design; applyDesign(d.tipo, d.n, d.esq, true); }
-  }
-  setPasso(3);
+  const b = e.target.closest('[data-hall]'); if(!b || b.dataset.hall===S.hall) return;
+  if(!S.design){ S.hall = b.dataset.hall; save(); renderTiles(false); toast('Vale para o próximo desenho que você escolher.'); return; }
+  pushUndo(); S.hall = b.dataset.hall; const d = S.design; applyDesign(d.tipo, d.n, d.esq, true);
 };
 function drawCellsThumb(cv, cells, palette){
   const w = cv.clientWidth || 120, h = Math.round(w*530/611), r = window.devicePixelRatio||1;
@@ -1264,7 +1323,7 @@ function renderSchemes(){
   $('schemes').innerHTML = PALETAS.map((p,n)=>tileHTML(`data-esq="${n}"`, p.nome, S.design && d.esq===n)).join('');
   requestAnimationFrame(()=>$('schemes').querySelectorAll('.tile').forEach(b=>drawThumb(b.querySelector('canvas'), d.tipo, v, PALETAS[+b.dataset.esq].cores)));
 }
-// Escolha em três níveis, um de cada vez: padrão, hall, cores. Cada passo mostra o que já está escolhido.
+// Escolha em três níveis, um de cada vez: padrão, hall, cores. Os botões dos passos navegam; escolher não avança sozinho.
 let passo = 1;
 function renderPassos(){
   const d = S.design, g = d && GENS[d.tipo];
@@ -1280,8 +1339,6 @@ function setPasso(n){
   passo = n;
   [1,2,3].forEach(i=>$('passo'+i).hidden = i!==n);
   renderPassos(); renderPasso();
-  // depois de escolher lá embaixo, volta ao topo dos passos para ver o próximo
-  if($('passos').getBoundingClientRect().top<0) $('passos').scrollIntoView({block:'start', behavior:'smooth'});
 }
 $('passos').onclick = e=>{ const b = e.target.closest('[data-passo]'); if(b) setPasso(+b.dataset.passo); };
 function renderTiles(full){
@@ -1316,7 +1373,6 @@ $('designs').onclick = e=>{
   }
   const b = e.target.closest('[data-tipo]'); if(!b) return;
   applyDesign(b.dataset.tipo, +b.dataset.n, des().esq);
-  setPasso(2);
 };
 $('schemes').onclick = e=>{
   const b = e.target.closest('[data-esq]'); if(!b) return;
