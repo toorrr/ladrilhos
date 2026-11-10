@@ -41,8 +41,8 @@ button,input{font:inherit;color:inherit}
 .btn.ghost{border-color:transparent;background:none}
 .btn.ghost:hover{background:var(--soft)}
 
-.modes{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--soft);border-radius:12px}
-.modes button{height:40px;padding:0 12px;border:0;border-radius:8px;background:none;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;background:var(--soft);border-radius:12px}
+.modes button{height:56px;padding:0 4px;border:0;border-radius:8px;background:none;font-size:12px;line-height:1.25;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
 .modes button svg{width:18px;height:18px;display:block}
 .modes button[aria-selected="true"]{background:var(--field);color:var(--ink);box-shadow:0 1px 2px rgba(42,34,29,.14)}
 
@@ -70,6 +70,17 @@ button,input{font:inherit;color:inherit}
 .tile[aria-pressed="true"] canvas{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--ink)}
 .tile .nm{font-size:12px;line-height:1.25;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tile[aria-pressed="true"] .nm{color:var(--ink);font-weight:600}
+.tiles.sq canvas{aspect-ratio:1}
+.tiles.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cores{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
+.corrow{display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;min-height:40px;min-width:0}
+.corrow .sw{position:relative;width:32px;height:32px;border-radius:6px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18);flex:none}
+.corrow input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
+.bqs{display:flex;flex-direction:column;gap:8px}
+.bq{display:grid;grid-template-columns:32px minmax(0,1fr) auto;column-gap:12px;align-items:center;font-size:14px}
+.bq canvas{width:32px;height:32px;border-radius:4px;display:block;grid-row:span 2}
+.bq .n{font-variant-numeric:tabular-nums;font-weight:600}
+.bq .sub{grid-column:2/4;font-size:12px;color:var(--ink2)}
 .upl{display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:12px;color:var(--ink);border:1px dashed #CDBFA9}
 .upl svg{width:24px;height:24px;display:block}
 
@@ -173,6 +184,7 @@ body.embed .stage{aspect-ratio:auto;max-height:none;height:100vh}
     <div class="modes" role="tablist" aria-label="Modo">
       <button role="tab" id="mDes" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>Escolher desenho</button>
       <button role="tab" id="mPin" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8 8-5-5z"/><path d="M7 12c-2 0-3 1.5-3 3.5S3 20 3 20s3 0 5-.5 3.5-2 3.5-3.5"/></svg>Pintar à mão</button>
+      <button role="tab" id="mBig" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M4 4l16 16"/></svg>Piso 20×20</button>
     </div>
 
     <div id="paneDes">
@@ -194,6 +206,40 @@ body.embed .stage{aspect-ratio:auto;max-height:none;height:100vh}
         <h2>Quantas peças de cada cor</h2>
         <div class="qty" id="qty"></div>
         <p class="totals" id="totals"></p>
+      </section>
+    </div>
+
+    <div id="paneBig" hidden>
+      <section class="sec">
+        <h2>Piso</h2>
+        <div class="tiles sq" id="bPisos"></div>
+      </section>
+      <section class="sec">
+        <h2>Como assentar</h2>
+        <div class="tiles sq four" id="bArr"></div>
+        <div class="wrap" style="margin-top:16px">
+          <button class="btn small" id="bGirar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>Girar todos</button>
+          <button class="btn small ghost" id="bSolto" hidden>Endireitar os girados à mão</button>
+        </div>
+        <p class="hint">Toque num piso no chão para girar só ele.</p>
+      </section>
+      <section class="sec">
+        <h2>Cores do piso</h2>
+        <div class="cores" id="bCores"></div>
+      </section>
+      <section class="sec">
+        <h2>Moldura</h2>
+        <div class="tiles sq" id="bMold"></div>
+        <div id="bMCoresWrap" style="margin-top:24px" hidden>
+          <h3>Cores da moldura</h3>
+          <div class="cores" id="bMCores"></div>
+        </div>
+        <button class="btn small" id="bOrig" style="margin-top:16px">Voltar às cores das fotos</button>
+      </section>
+      <section class="sec">
+        <h2>Quantas peças de cada</h2>
+        <div class="bqs" id="bQty"></div>
+        <p class="totals" id="bTot"></p>
       </section>
     </div>
 
@@ -349,13 +395,13 @@ const cv = $('cv'), vp = $('vp'), ctx = cv.getContext('2d');
 let dpr = window.devicePixelRatio || 1;
 
 /* ---------- Grade ---------- */
-function buildGrid(grout, origin, floor=FLOOR){
-  const g = grout/10, p = 10+g;
+function buildGrid(grout, origin, floor=FLOOR, t=10){
+  const g = grout/10, p = t+g;
   let ax, ay;
-  if(origin==='centro'){ ax = (70+ROOM_W)/2-5; ay = ROOM_H/2-5; }
-  else { ax = 70+g/2; ay = ROOM_H-g/2-10; }
-  const imin = Math.floor((70-10-ax)/p), imax = Math.ceil((ROOM_W-ax)/p);
-  const jmin = Math.floor((-10-ay)/p), jmax = Math.ceil((ROOM_H-ay)/p);
+  if(origin==='centro'){ ax = (70+ROOM_W)/2-t/2; ay = ROOM_H/2-t/2; }
+  else { ax = 70+g/2; ay = ROOM_H-g/2-t; }
+  const imin = Math.floor((70-t-ax)/p), imax = Math.ceil((ROOM_W-ax)/p);
+  const jmin = Math.floor((-t-ay)/p), jmax = Math.ceil((ROOM_H-ay)/p);
   const cols = imax-imin+1, rows = jmax-jmin+1, n = cols*rows;
   const x0 = ax+imin*p, y0 = ay+jmin*p;
   const area = new Float32Array(n), inside = new Uint8Array(n), hall = new Uint8Array(n), all = [];
@@ -363,13 +409,13 @@ function buildGrid(grout, origin, floor=FLOOR){
   for(let j=0;j<rows;j++) for(let i=0;i<cols;i++){
     const tx = x0+i*p, ty = y0+j*p; let a = 0;
     for(const r of floor){
-      const w = Math.min(tx+10,r[2])-Math.max(tx,r[0]), h = Math.min(ty+10,r[3])-Math.max(ty,r[1]);
+      const w = Math.min(tx+t,r[2])-Math.max(tx,r[0]), h = Math.min(ty+t,r[3])-Math.max(ty,r[1]);
       if(w>0&&h>0) a += w*h;
     }
     const k = j*cols+i; area[k] = a;
-    if(tx+5>HALL[0] && tx+5<HALL[2] && ty+5>HALL[1] && ty+5<HALL[3]) hall[k] = 1;
+    if(tx+t/2>HALL[0] && tx+t/2<HALL[2] && ty+t/2>HALL[1] && ty+t/2<HALL[3]) hall[k] = 1;
     // sobra com menos de 3 cm não leva ladrilho: na obra ela some no rejunte e no rodapé
-    if(a>30){ inside[k] = 1; total++; all.push(k); if(a<99.5) cut++; }
+    if(a>3*t){ inside[k] = 1; total++; all.push(k); if(a<t*t-.5) cut++; }
   }
   return {g,p,x0,y0,cols,rows,n,area,inside,hall,total,cut,grout,origin,all};
 }
@@ -416,9 +462,10 @@ function distTo(Gx, tg){
 
 /* ---------- Desfazer ---------- */
 const undoS = [], redoS = [];
-function snap(){ return {grout:S.grout, origin:S.origin, groutColor:S.groutColor, palette:S.palette.slice(), cells:S.cells.slice(), design:S.design, hall:S.hall}; }
+function snap(){ return {grout:S.grout, origin:S.origin, groutColor:S.groutColor, palette:S.palette.slice(), cells:S.cells.slice(), design:S.design, hall:S.hall, big:JSON.stringify(S.big)}; }
 function restore(sn){
   S.groutColor = sn.groutColor; S.palette = sn.palette.slice(); S.design = sn.design; S.hall = sn.hall;
+  if(sn.big) S.big = JSON.parse(sn.big);
   if(sn.grout!==G.grout || sn.origin!==G.origin || sn.cells.length!==G.n){
     S.grout = sn.grout; S.origin = sn.origin; G = buildGrid(S.grout,S.origin);
   }
@@ -453,7 +500,8 @@ function drawScene(c, s, tx, ty, ratio, w, h, overlay, labelPx, thumb){
   c.save(); c.beginPath(); for(const r of FLOOR) c.rect(r[0],r[1],r[2]-r[0],r[3]-r[1]);
   c.fillStyle = S.groutColor; c.fill(); c.clip();
   const ts = thumb ? G.p+.2 : Math.min(10, G.p-.6*px), off = (10-ts)/2;
-  for(let ci=0; ci<S.palette.length; ci++){
+  if(mode==='big') drawBig(c, px, thumb);
+  else for(let ci=0; ci<S.palette.length; ci++){
     c.fillStyle = S.palette[ci]; c.beginPath();
     for(const k of G.all){
       if(S.cells[k]!==ci) continue;
@@ -517,16 +565,17 @@ function zoomAt(f, sx, sy){
 /* ---------- Modo: escolher desenho / pintar à mão ---------- */
 function setMode(m){
   mode = m;
-  $('mDes').setAttribute('aria-selected', m==='des'); $('mPin').setAttribute('aria-selected', m==='pin');
-  $('paneDes').hidden = m!=='des'; $('panePin').hidden = m!=='pin';
+  $('mDes').setAttribute('aria-selected', m==='des'); $('mPin').setAttribute('aria-selected', m==='pin'); $('mBig').setAttribute('aria-selected', m==='big');
+  $('paneDes').hidden = m!=='des'; $('panePin').hidden = m!=='pin'; $('paneBig').hidden = m!=='big';
+  if(S.big.ativo!==(m==='big')){ S.big.ativo = m==='big'; save(); }
   // no celular, fora do modo pintar, o dedo rola a página em vez de pintar
   cv.style.touchAction = m==='pin' ? 'none' : 'pan-y pinch-zoom';
   cv.style.cursor = m==='pin' ? 'crosshair' : 'grab';
   hover = null;
-  if(m==='des') renderTiles(true); else updTools();
-  render();
+  if(m==='des') renderTiles(true); else if(m==='big') renderBig(); else updTools();
+  updTotals(); render();
 }
-$('mDes').onclick = ()=>setMode('des'); $('mPin').onclick = ()=>setMode('pin');
+$('mDes').onclick = ()=>setMode('des'); $('mPin').onclick = ()=>setMode('pin'); $('mBig').onclick = ()=>setMode('big');
 
 /* ---------- Ferramentas de pintar ---------- */
 const ICON = {
@@ -607,7 +656,7 @@ function cancelDrag(){
 }
 function idleCursor(){ cv.style.cursor = mode==='pin' && !spaceDown ? 'crosshair' : 'grab'; }
 cv.addEventListener('pointerdown', e=>{
-  const p = pos(e);
+  const p = pos(e); panMoved = false;
   if(mode!=='pin'){
     if(e.pointerType==='touch') return;
     cv.setPointerCapture(e.pointerId);
@@ -642,10 +691,11 @@ cv.addEventListener('pointermove', e=>{
   }
   const c = ijAt(p.sx,p.sy);
   if(!drag){
+    if(mode==='big'){ cv.style.cursor = bigAt(p.sx,p.sy) ? 'pointer' : 'grab'; return; }
     if(mode!=='pin') return;
     const nh = kOf(c)>=0 ? c : null; if(JSON.stringify(nh)!==JSON.stringify(hover)){ hover = nh; render(); } return;
   }
-  if(drag.mode==='pan'){ V.tx = drag.tx+p.sx-drag.sx; V.ty = drag.ty+p.sy-drag.sy; render(); }
+  if(drag.mode==='pan'){ V.tx = drag.tx+p.sx-drag.sx; V.ty = drag.ty+p.sy-drag.sy; if(Math.hypot(p.sx-drag.sx,p.sy-drag.sy)>4) panMoved = true; render(); }
   else if(drag.mode==='paint'){
     if(c.i!==drag.last.i || c.j!==drag.last.j){
       let ch = false; line(drag.last, c, (i,j)=>{ ch = paintFoot(i,j) || ch; });
@@ -1458,6 +1508,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick = closeSheets);
 
 /* ---------- Chão: rejunte, alinhamento ---------- */
 function updTotals(){
+  if(mode==='big'){ $('resumo').textContent = `${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(bigGrid().total)} pisos 20×20 · rejunte ${String(S.grout).replace('.',',')} mm`; return; }
   $('resumo').textContent = `${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(G.total)} ladrilhos 10×10 · rejunte ${String(S.grout).replace('.',',')} mm`;
   $('totals').textContent = `${fmt(G.total)} ladrilhos no total, ${fmt(G.cut)} deles cortados junto às paredes. Sem a margem de perda.`;
 }
@@ -1492,7 +1543,7 @@ function store(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ ret
 function load(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function toObj(){
   let c = ''; for(const k of G.all) c += HEX[S.cells[k]];
-  return {app:'ladrilhos-sala', v:1, grout:S.grout, groutColor:S.groutColor, origin:S.origin, palette:S.palette.slice(), plan:S.plan, cells:c, design:S.design, hall:S.hall};
+  return {app:'ladrilhos-sala', v:1, grout:S.grout, groutColor:S.groutColor, origin:S.origin, palette:S.palette.slice(), plan:S.plan, cells:c, design:S.design, hall:S.hall, big:S.big};
 }
 function fromObj(o){
   if(!o || !Array.isArray(o.palette) || typeof o.cells!=='string') throw new Error('formato');
@@ -1515,6 +1566,7 @@ function fromObj(o){
   const d = o.design;
   S.design = d && GENS[d.tipo] && GENS[d.tipo].vars[d.n] && PALETAS[d.esq] ? {tipo:d.tipo, n:+d.n, esq:+d.esq} : null;
   if(hallOk(o.hall)) S.hall = o.hall;
+  S.big = bigOk(o.big);
   G = NG; S.cells = nc;
   if(cur>=pal.length) cur = 0;
 }
@@ -1523,6 +1575,7 @@ function save(){ if(EMBED) return; clearTimeout(saveT); saveT = setTimeout(()=>s
 function changed(full){
   if(full) syncControls();
   updPalette(); render(); save(); syncTiles();
+  if(mode==='big'){ if(full) renderBig(); else updBigQty(); }
 }
 function syncControls(){
   $('grout').value = S.grout; $('groutVal').textContent = String(S.grout).replace('.',',')+' mm';
@@ -1577,6 +1630,7 @@ $('fileIn').onchange = async e=>{
 };
 $('pngBtn').onclick = ()=>{
   const k = 4, pad = 40, w = Math.round((ROOM_W+2*pad)*k), floorH = Math.round((ROOM_H+2*pad)*k);
+  if(mode==='big') return pngBig();
   const cnt = counts(), used = S.palette.map((h,i)=>[h,cnt[i]]).filter(x=>x[1]>0);
   const perRow = 4, legH = 64+Math.ceil(used.length/perRow)*72+24;
   const c = document.createElement('canvas'); c.width = w; c.height = floorH+legH;
@@ -1616,6 +1670,283 @@ $('linkBtn').onclick = async ()=>{
 let toastT = 0;
 function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'), 2600); }
 
+/* ---------- Piso 20×20: pisos com desenho, que giram, e molduras ----------
+   Cada desenho pinta um quadrado 0..1 com o lado "de cima" em y=0. Girar = rodar 90° no sentido do relógio.
+   Desenhos tirados das fotos de 10/11 (primeira e última foto são o mesmo piso). */
+const BT = 20;
+function poly(c, pts){ c.beginPath(); pts.forEach(([x,y],n)=>n ? c.lineTo(x,y) : c.moveTo(x,y)); c.closePath(); c.fill(); }
+const meia = pts=>pts.map(([x,y])=>[1-x,1-y]);
+function disco(c, x, y, r, a0=0, a1=2*Math.PI){ c.beginPath(); c.moveTo(x,y); c.arc(x,y,r,a0,a1); c.closePath(); c.fill(); }
+// curva fechada e suave por pontos (Catmull-Rom)
+function suave(c, P){
+  c.beginPath(); c.moveTo(P[0][0],P[0][1]);
+  for(let n=0;n<P.length;n++){
+    const p0 = P[(n-1+P.length)%P.length], p1 = P[n], p2 = P[(n+1)%P.length], p3 = P[(n+2)%P.length];
+    c.bezierCurveTo(p1[0]+(p2[0]-p0[0])/6, p1[1]+(p2[1]-p0[1])/6, p2[0]-(p3[0]-p1[0])/6, p2[1]-(p3[1]-p1[1])/6, p2[0], p2[1]);
+  }
+  c.closePath(); c.fill();
+}
+const PISOS = [
+  {id:'setas', nome:'Faixa e setas', cores:[['Fundo','#F1ECE2'],['Faixa','#B7CDA4'],['Rosa','#E8B7B9'],['Amarelo','#F0C66F']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    c.fillStyle = k[1]; poly(c, [[.27,0],[1,.73],[.73,1],[0,.27]]);
+    c.fillStyle = k[2]; poly(c, [[0,0],[.27,0],[0,.27]]); poly(c, [[1,1],[.73,1],[1,.73]]);
+    const rosa = [[.56,.19],[.68,0],[1,0],[.82,.19]], amar = [[.82,.19],[1,0],[1,.29],[.82,.42]];
+    poly(c, rosa); poly(c, meia(rosa));
+    c.fillStyle = k[3]; poly(c, amar); poly(c, meia(amar));
+  }},
+  {id:'leques', nome:'Faixa e leques', cores:[['Fundo','#EFEDE6'],['Faixa','#5F7B64'],['Rosa','#CF706C'],['Amarelo','#EDBA49']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    for(const [cx,cy,a0] of [[1,0,Math.PI/2],[0,1,-Math.PI/2]]){
+      c.fillStyle = k[2]; c.beginPath(); c.moveTo(cx,cy);
+      for(let n=0;n<=48;n++){
+        const t = n/48, a = a0+t*Math.PI/2;
+        // dois dentes virados para o meio do piso
+        const r = .58 + .15*Math.max(0, 1-Math.abs(t-.3)/.07) + .15*Math.max(0, 1-Math.abs(t-.7)/.07);
+        c.lineTo(cx+r*Math.cos(a), cy+r*Math.sin(a));
+      }
+      c.closePath(); c.fill();
+      c.fillStyle = k[3]; disco(c, cx, cy, .3, a0, a0+Math.PI/2);
+    }
+    c.fillStyle = k[1]; poly(c, [[0,0],[.13,0],[1,.87],[1,1],[.87,1],[0,.13]]);
+    c.fillStyle = k[2]; disco(c, 0, 0, .14); disco(c, 1, 1, .14);
+  }},
+  {id:'losango', nome:'Losango e estrela', cores:[['Fundo','#8FA67E'],['Linhas','#F2EEE4']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    c.strokeStyle = k[1]; c.lineWidth = .04; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.beginPath();
+    c.moveTo(.122,.456); c.lineTo(.5,.1); c.lineTo(.878,.456);
+    c.moveTo(.122,.544); c.lineTo(.5,.9); c.lineTo(.878,.544);
+    c.moveTo(1,.37); c.arc(1,.5,.13,-Math.PI/2,-3*Math.PI/2,true);
+    c.moveTo(0,.63); c.arc(0,.5,.13,Math.PI/2,-Math.PI/2,true);
+    c.moveTo(.6,0); c.arc(.5,0,.1,0,Math.PI);
+    c.moveTo(.4,1); c.arc(.5,1,.1,Math.PI,2*Math.PI);
+    for(let n=0;n<8;n++){ const a = n*Math.PI/4; c.moveTo(.5,.5); c.lineTo(.5+.075*Math.cos(a), .5+.075*Math.sin(a)); }
+    c.stroke();
+    for(let q=0;q<4;q++){
+      c.save(); c.translate(.5,.5); c.rotate(q*Math.PI/2); c.translate(-.5,-.5);
+      c.beginPath(); c.moveTo(0,0); c.lineTo(.1,.1); c.moveTo(.1,.03); c.lineTo(.1,.1); c.lineTo(.03,.1); c.stroke();
+      c.restore();
+    }
+  }},
+  {id:'seixo', nome:'Seixo', cores:[['Fundo','#F3F1EC'],['Seixo','#E9B04A']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    c.fillStyle = k[1]; suave(c, [[.01,.5],[.14,.14],[.45,.01],[.82,.14],[.98,.45],[.82,.78],[.5,.99],[.16,.86]]);
+  }},
+  {id:'cruz', nome:'Cruz curva', cores:[['Fundo','#E3A48C'],['Linha','#F3F1EC']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    c.strokeStyle = k[1]; c.lineWidth = .1; c.lineCap = 'butt';
+    c.beginPath(); c.moveTo(-.03,-.05); c.quadraticCurveTo(.5,.93,1.03,-.05); c.stroke();
+    c.beginPath(); c.moveTo(-.03,1.05); c.quadraticCurveTo(.5,.19,1.03,1.05); c.stroke();
+    c.fillStyle = k[1]; c.fillRect(.4,.44,.08,.18);
+  }},
+  {id:'meias', nome:'Meias-luas', cores:[['Fundo','#B54A4E'],['Meias-luas','#F2EEE6']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    c.fillStyle = k[1]; disco(c, 1, .42, .3); disco(c, .5, 1, .34);
+  }},
+  {id:'octogono', nome:'Octógono', cores:[['Fundo','#7F9C9C'],['Cantos','#F1F0EC']], draw(c,k){
+    c.fillStyle = k[0]; c.fillRect(0,0,1,1);
+    c.fillStyle = k[1];
+    poly(c, [[0,0],[.2,0],[0,.2]]); poly(c, [[1,0],[.8,0],[1,.2]]); poly(c, [[1,1],[.8,1],[1,.8]]); poly(c, [[0,1],[.2,1],[0,.8]]);
+  }},
+];
+const PISO = Object.fromEntries(PISOS.map(p=>[p.id,p]));
+// Molduras: faixas medidas a partir do lado da parede (u=0) até o lado de dentro (u=1).
+// A peça de canto sai das mesmas faixas, então o desenho continua certo nos cantos de fora e de dentro.
+const MOLDS = {
+  flores:{nome:'Azul com flores', cores:[['Faixas','#8EA8DF'],['Fundo','#F3EDDD'],['Flores','#EAB559']], faixas:[[0,.14,0],[.14,.24,1],[.24,.31,0],[.31,.77,1],[.77,.84,0],[.84,.92,1],[.92,1,0]], flores:2},
+  listras:{nome:'Listras', cores:[['Fundo','#7D2A2F'],['Listras','#EFE5D4']], faixas:[[0,.17,0],[.17,.33,1],[.33,.67,0],[.67,.83,1],[.83,1,0]]},
+};
+const ARRANJOS = [['iguais','Todos iguais'],['alternado','Alternado'],['roda','Em roda'],['fila','Em fila']];
+const BIG0 = ()=>({ativo:false, piso:'setas', arranjo:'iguais', giro:0, ov:{}, moldura:null, cores:{}, mcores:{}});
+S.big = BIG0();
+const corP = id=>S.big.cores[id] || PISO[id].cores.map(x=>x[1]);
+const corM = id=>S.big.mcores[id] || MOLDS[id].cores.map(x=>x[1]);
+function rotOf(i, j, arr=S.big.arranjo, giro=S.big.giro, ov=S.big.ov){
+  const a = arr==='alternado' ? (i+j)&1 : arr==='roda' ? [[0,1],[3,2]][j&1][i&1] : arr==='fila' ? (j&1)*2 : 0;
+  return (a+giro+(ov[i+','+j]||0))&3;
+}
+function flor(c, x, y, ang){
+  c.save(); c.translate(x,y); c.rotate(ang); c.beginPath();
+  c.moveTo(0,.2); c.lineTo(.16,-.13); c.lineTo(.035,-.08); c.lineTo(-.035,-.08); c.lineTo(-.16,-.13); c.closePath();
+  c.moveTo(.05,-.18); c.arc(0,-.18,.05,0,2*Math.PI);
+  c.fill(); c.restore();
+}
+function estrela(c, x, y, r){
+  c.beginPath();
+  for(let n=0;n<8;n++){ const a = n*Math.PI/4 - Math.PI/2, rr = n%2 ? r*.35 : r; c.lineTo(x+rr*Math.cos(a), y+rr*Math.sin(a)); }
+  c.closePath(); c.fill();
+}
+// tipo: 1 reta (parede em cima) · 2 canto de fora (paredes em cima e à esquerda) · 3 canto de dentro (parede só na diagonal de cima à esquerda)
+function pintaMoldura(c, tipo, m, k){
+  for(const [u0,u1,ci] of m.faixas){
+    c.fillStyle = k[ci]; c.beginPath();
+    if(tipo===1) c.rect(0,u0-.002,1,u1-u0+.004);
+    else if(tipo===2){ c.rect(u0,u0,1-u0+.01,u1-u0); c.rect(u0,u0,u1-u0,1-u0+.01); }
+    else { c.rect(-.01,u0,u1+.01,u1-u0); c.rect(u0,-.01,u1-u0,u1+.01); }
+    c.fill();
+  }
+  if(m.flores===undefined) return;
+  c.fillStyle = k[m.flores]; const v = .54, Q = -Math.PI/2, D = -Math.PI/4;
+  if(tipo===1){ flor(c,0,v,0); flor(c,.5,v,0); flor(c,1,v,0); estrela(c,.25,v,.07); estrela(c,.75,v,.07); }
+  else if(tipo===2){ flor(c,1,v,0); flor(c,v,1,Q); flor(c,.56,.56,D); estrela(c,.79,v,.06); estrela(c,v,.79,.06); }
+  else { flor(c,v,0,Q); flor(c,0,v,0); flor(c,.56,.56,D); estrela(c,.25,v,.06); estrela(c,v,.25,.06); }
+}
+// tipo 0 piso · 1–3 moldura · 4 peça lisa cortada junto à parede
+function pintaPeca(c, tipo, r, x, y, sz, piso, kp, mold, km){
+  c.save(); c.translate(x,y); c.scale(sz,sz);
+  c.beginPath(); c.rect(0,0,1,1); c.clip();
+  if(r){ c.translate(.5,.5); c.rotate(r*Math.PI/2); c.translate(-.5,-.5); }
+  if(tipo===0) piso.draw(c, kp);
+  else if(tipo===4){ c.fillStyle = km[mold.faixas[0][2]]; c.fillRect(0,0,1,1); }
+  else pintaMoldura(c, tipo, mold, km);
+  c.restore();
+}
+let bigG = null;
+function bigGrid(){
+  const key = S.grout+'|'+S.origin;
+  if(!bigG || bigG.key!==key){ bigG = buildGrid(S.grout, S.origin, FLOOR, BT); bigG.key = key; }
+  return bigG;
+}
+// Onde vai cada peça: com moldura, a primeira volta de peças inteiras junto à parede é moldura,
+// e as sobras cortadas entre ela e a parede saem lisas, na cor de fora da moldura.
+function bigLayout(B=bigGrid()){
+  const tipo = new Uint8Array(B.n), rot = new Uint8Array(B.n), full = new Uint8Array(B.n);
+  for(const k of B.all) if(B.area[k]>=BT*BT-.5) full[k] = 1;
+  const at = (i,j)=>i<0||j<0||i>=B.cols||j>=B.rows ? 0 : full[j*B.cols+i];
+  const mold = S.big.moldura && MOLDS[S.big.moldura];
+  for(const k of B.all){
+    const i = k%B.cols, j = (k/B.cols)|0;
+    if(!mold){ rot[k] = rotOf(i,j); continue; }
+    if(!full[k]){ tipo[k] = 4; continue; }
+    const o = [!at(i,j-1), !at(i+1,j), !at(i,j+1), !at(i-1,j)], no = o.filter(Boolean).length;
+    if(no===0){
+      const q = [!at(i-1,j-1), !at(i+1,j-1), !at(i+1,j+1), !at(i-1,j+1)].indexOf(true);
+      if(q<0) rot[k] = rotOf(i,j); else { tipo[k] = 3; rot[k] = q; }
+    } else if(no===2 && !(o[0]&&o[2]) && !(o[1]&&o[3])){ tipo[k] = 2; rot[k] = o[0]&&o[3] ? 0 : o[0]&&o[1] ? 1 : o[1]&&o[2] ? 2 : 3; }
+    else { tipo[k] = 1; rot[k] = o.indexOf(true); }
+  }
+  return {tipo, rot};
+}
+function drawBig(c, px, thumb){
+  const B = bigGrid(), L = bigLayout(B), piso = PISO[S.big.piso], kp = corP(S.big.piso);
+  const mold = S.big.moldura && MOLDS[S.big.moldura], km = mold && corM(S.big.moldura);
+  const ts = thumb ? B.p+.2 : Math.min(BT, B.p-.6*px), off = (BT-ts)/2;
+  for(const k of B.all) pintaPeca(c, L.tipo[k], L.rot[k], B.x0+(k%B.cols)*B.p+off, B.y0+((k/B.cols)|0)*B.p+off, ts, piso, kp, mold, km);
+}
+function bigAt(sx, sy){
+  const B = bigGrid(), x = (sx-V.tx)/V.s, y = (sy-V.ty)/V.s;
+  const i = Math.floor((x-B.x0+B.g/2)/B.p), j = Math.floor((y-B.y0+B.g/2)/B.p);
+  if(i<0||j<0||i>=B.cols||j>=B.rows) return null;
+  const k = j*B.cols+i; if(!B.inside[k]) return null;
+  return bigLayout(B).tipo[k]===0 ? {i,j} : null;
+}
+function bigCounts(){
+  const B = bigGrid(), L = bigLayout(B), n = [0,0,0,0,0], cut = [0,0,0,0,0];
+  for(const k of B.all){ n[L.tipo[k]]++; if(B.area[k]<BT*BT-.5) cut[L.tipo[k]]++; }
+  const rows = [[0, PISO[S.big.piso].nome, n[0], cut[0]]];
+  if(S.big.moldura) rows.push([1, 'Moldura reta', n[1], 0], [2, 'Moldura de canto', n[2]+n[3], 0], [4, 'Lisa, cortada junto à parede', n[4], n[4]]);
+  return {rows, total:B.total, B};
+}
+
+/* miniaturas: um pedaço do chão com o piso, o jeito de assentar ou a moldura */
+function sqCanvas(cv){ const w = cv.clientWidth || 104, r = window.devicePixelRatio||1; cv.width = Math.round(w*r); cv.height = Math.round(w*r); const c = cv.getContext('2d'); c.setTransform(r,0,0,r,0,0); return [c,w]; }
+function thumbBig(cv, {piso=S.big.piso, arranjo=S.big.arranjo, moldura=S.big.moldura, n=3}={}){
+  const [c,w] = sqCanvas(cv), P = PISO[piso], kp = corP(piso), m = moldura && MOLDS[moldura], km = m && corM(moldura);
+  c.fillStyle = S.groutColor; c.fillRect(0,0,w,w);
+  const p = w/n, sz = p-1;
+  for(let j=0;j<n;j++) for(let i=0;i<n;i++){
+    let t = 0, r = rotOf(i, j, arranjo, S.big.giro, {});
+    if(m){ if(i===0&&j===0){ t = 2; r = 0; } else if(j===0){ t = 1; r = 0; } else if(i===0){ t = 1; r = 3; } }
+    pintaPeca(c, t, r, i*p+.5, j*p+.5, sz, P, kp, m, km);
+  }
+}
+function corRows(lista, vals, attr){
+  return lista.map(([nome],i)=>`<label class="corrow"><span class="sw" style="background:${vals[i]}"><input type="color" value="${vals[i]}" data-${attr}="${i}" aria-label="Cor: ${esc(nome)}"></span><span>${esc(nome)}</span></label>`).join('');
+}
+function renderBig(){
+  if(mode!=='big') return;
+  const b = S.big;
+  $('bPisos').innerHTML = PISOS.map(p=>tileHTML(`data-piso="${p.id}"`, p.nome, b.piso===p.id)).join('');
+  $('bArr').innerHTML = ARRANJOS.map(([id,nome])=>tileHTML(`data-arr="${id}"`, nome, b.arranjo===id)).join('');
+  $('bMold').innerHTML = [[null,'Sem moldura'], ...Object.entries(MOLDS).map(([id,m])=>[id,m.nome])].map(([id,nome])=>tileHTML(`data-mold="${id||''}"`, nome, b.moldura===id)).join('');
+  $('bCores').innerHTML = corRows(PISO[b.piso].cores, corP(b.piso), 'cp');
+  $('bMCoresWrap').hidden = !b.moldura;
+  if(b.moldura) $('bMCores').innerHTML = corRows(MOLDS[b.moldura].cores, corM(b.moldura), 'cm');
+  $('bSolto').hidden = !Object.keys(b.ov).length;
+  requestAnimationFrame(drawBigThumbs);
+  updBigQty();
+}
+function drawBigThumbs(){
+  $('bPisos').querySelectorAll('[data-piso]').forEach(t=>thumbBig(t.querySelector('canvas'), {piso:t.dataset.piso, moldura:null}));
+  $('bArr').querySelectorAll('[data-arr]').forEach(t=>thumbBig(t.querySelector('canvas'), {arranjo:t.dataset.arr, moldura:null, n:4}));
+  $('bMold').querySelectorAll('[data-mold]').forEach(t=>thumbBig(t.querySelector('canvas'), {moldura:t.dataset.mold||null}));
+}
+function updBigQty(){
+  const {rows, total} = bigCounts();
+  $('bQty').innerHTML = rows.map(([t,nome,n,cut],x)=>`<div class="bq"><canvas data-q="${x}" data-t="${t}"></canvas><span class="nm">${esc(nome)}</span><span class="n">${fmt(n)}</span>${cut && t===0 ? `<span class="sub">${fmt(cut)} cortados junto às paredes</span>` : ''}</div>`).join('');
+  $('bTot').textContent = `${fmt(total)} peças de 20×20 no total. Sem a margem de perda.`;
+  const P = PISO[S.big.piso], kp = corP(S.big.piso), m = S.big.moldura && MOLDS[S.big.moldura], km = m && corM(S.big.moldura);
+  $('bQty').querySelectorAll('canvas').forEach(cv=>{ const [c,w] = sqCanvas(cv); pintaPeca(c, +cv.dataset.t, 0, 0, 0, w, P, kp, m, km); });
+}
+function bigSet(fn, msg){ pushUndo(); fn(S.big); changed(); renderBig(); if(msg) toast(msg); }
+$('bPisos').onclick = e=>{ const t = e.target.closest('[data-piso]'); if(t && t.dataset.piso!==S.big.piso) bigSet(b=>{ b.piso = t.dataset.piso; }); };
+$('bArr').onclick = e=>{ const t = e.target.closest('[data-arr]'); if(t && t.dataset.arr!==S.big.arranjo) bigSet(b=>{ b.arranjo = t.dataset.arr; b.ov = {}; }); };
+$('bMold').onclick = e=>{ const t = e.target.closest('[data-mold]'); const id = t && (t.dataset.mold||null); if(t && id!==S.big.moldura) bigSet(b=>{ b.moldura = id; }); };
+$('bGirar').onclick = ()=>bigSet(b=>{ b.giro = (b.giro+1)&3; });
+$('bSolto').onclick = ()=>bigSet(b=>{ b.ov = {}; }, 'Os pisos girados um a um voltaram ao jeito de assentar.');
+$('bOrig').onclick = ()=>bigSet(b=>{ delete b.cores[b.piso]; if(b.moldura) delete b.mcores[b.moldura]; });
+let bEdit = false;
+function corInput(e){
+  const t = e.target, pi = t.dataset.cp, mi = t.dataset.cm; if(pi===undefined && mi===undefined) return;
+  if(!bEdit){ pushUndo(); bEdit = true; }
+  if(pi!==undefined){ const a = corP(S.big.piso).slice(); a[+pi] = t.value; S.big.cores[S.big.piso] = a; }
+  else { const a = corM(S.big.moldura).slice(); a[+mi] = t.value; S.big.mcores[S.big.moldura] = a; }
+  t.parentNode.style.background = t.value; render();
+}
+function corChange(){ if(!bEdit) return; bEdit = false; save(); requestAnimationFrame(drawBigThumbs); updBigQty(); }
+for(const id of ['bCores','bMCores']){ $(id).addEventListener('input', corInput); $(id).addEventListener('change', corChange); }
+let panMoved = false;
+cv.addEventListener('click', e=>{
+  if(mode!=='big' || panMoved){ panMoved = false; return; }
+  const p = pos(e), at = bigAt(p.sx, p.sy); if(!at) return;
+  const key = at.i+','+at.j;
+  pushUndo(); const ov = S.big.ov; ov[key] = ((ov[key]||0)+1)&3; if(!ov[key]) delete ov[key];
+  changed(); $('bSolto').hidden = !Object.keys(ov).length;
+});
+
+function bigOk(o){
+  const b = BIG0(); if(!o || typeof o!=='object') return b;
+  const hx = a=>Array.isArray(a) && a.every(h=>/^#[0-9a-f]{6}$/i.test(h));
+  b.ativo = o.ativo===true;
+  if(PISO[o.piso]) b.piso = o.piso;
+  if(ARRANJOS.some(a=>a[0]===o.arranjo)) b.arranjo = o.arranjo;
+  b.giro = (+o.giro||0)&3;
+  if(o.ov && typeof o.ov==='object') for(const [k,v] of Object.entries(o.ov)) if(/^\d+,\d+$/.test(k) && (+v&3)) b.ov[k] = +v&3;
+  if(MOLDS[o.moldura]) b.moldura = o.moldura;
+  for(const [id,a] of Object.entries(o.cores||{})) if(PISO[id] && hx(a) && a.length===PISO[id].cores.length) b.cores[id] = a;
+  for(const [id,a] of Object.entries(o.mcores||{})) if(MOLDS[id] && hx(a) && a.length===MOLDS[id].cores.length) b.mcores[id] = a;
+  return b;
+}
+function pngBig(){
+  const k = 4, pad = 40, w = Math.round((ROOM_W+2*pad)*k), floorH = Math.round((ROOM_H+2*pad)*k);
+  const {rows, total} = bigCounts(), legH = 64+rows.length*80+24;
+  const c = document.createElement('canvas'); c.width = w; c.height = floorH+legH;
+  const x = c.getContext('2d');
+  drawScene(x, k, pad*k, pad*k, 1, w, floorH, false, 32);
+  x.fillStyle = C_BG; x.fillRect(0,floorH,w,legH);
+  x.fillStyle = '#2A221D'; x.font = '700 40px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif'; x.textBaseline = 'middle';
+  x.fillText(`Ladrilhos da sala · ${fmt(total)} pisos 20×20 · rejunte ${String(S.grout).replace('.',',')} mm`, pad*k, floorH+24);
+  x.font = '500 32px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+  const P = PISO[S.big.piso], kp = corP(S.big.piso), m = S.big.moldura && MOLDS[S.big.moldura], km = m && corM(S.big.moldura);
+  rows.forEach(([t,nome,n],i)=>{
+    const cy = floorH+88+i*80;
+    pintaPeca(x, t, 0, pad*k, cy, 56, P, kp, m, km);
+    x.fillStyle = '#2A221D'; x.fillText(`${nome} · ${fmt(n)}`, pad*k+80, cy+28);
+  });
+  c.toBlob(b=>download(`ladrilhos-sala-${stamp()}.png`, b), 'image/png');
+}
+
 /* ---------- Início ---------- */
 async function boot(){
   buildTools();
@@ -1646,7 +1977,7 @@ async function boot(){
   if(!loaded){ regrid(null,null); applyDesign(DEFAULT_DESIGN.tipo, DEFAULT_DESIGN.n, DEFAULT_DESIGN.esq, true); }
   if(S.design) tab = S.design.tipo in {trelica:1, moldura:1, pontos:1} ? S.design.tipo : 'outros';
   const d = des(); lastDes = `${d.tipo}|${d.n}|${d.esq}|${S.hall}`;
-  syncControls(); updPalette(); updTools(); updUndo(); setMode('des');
+  syncControls(); updPalette(); updTools(); updUndo(); setMode(S.big.ativo ? 'big' : 'des');
   new ResizeObserver(resize).observe(vp); resize();
 }
 boot();
