@@ -1854,11 +1854,11 @@ function sqCanvas(cv){ const w = cv.clientWidth || 104, r = window.devicePixelRa
 function thumbBig(cv, {piso=S.big.piso, arranjo=S.big.arranjo, moldura=S.big.moldura, n=3}={}){
   const [c,w] = sqCanvas(cv), P = PISO[piso], kp = corP(piso), m = moldura && MOLDS[moldura], km = m && corM(moldura);
   c.fillStyle = S.groutColor; c.fillRect(0,0,w,w);
-  const p = w/n, sz = p-1;
+  const p = w/n, sz = n===1 ? w : p-1, o0 = n===1 ? 0 : .5;
   for(let j=0;j<n;j++) for(let i=0;i<n;i++){
     let t = 0, r = rotOf(i, j, arranjo, S.big.giro, {});
     if(m){ if(i===0&&j===0){ t = 2; r = 0; } else if(j===0){ t = 1; r = 0; } else if(i===0){ t = 1; r = 3; } }
-    pintaPeca(c, t, r, i*p+.5, j*p+.5, sz, P, kp, m, km);
+    pintaPeca(c, t, n===1 ? 0 : r, i*p+o0, j*p+o0, sz, P, kp, m, km);
   }
 }
 function corRows(lista, vals, attr){
@@ -1878,7 +1878,7 @@ function renderBig(){
   updBigQty();
 }
 function drawBigThumbs(){
-  $('bPisos').querySelectorAll('[data-piso]').forEach(t=>thumbBig(t.querySelector('canvas'), {piso:t.dataset.piso, moldura:null}));
+  $('bPisos').querySelectorAll('[data-piso]').forEach(t=>thumbBig(t.querySelector('canvas'), {piso:t.dataset.piso, moldura:null, n:1}));
   $('bArr').querySelectorAll('[data-arr]').forEach(t=>thumbBig(t.querySelector('canvas'), {arranjo:t.dataset.arr, moldura:null, n:4}));
   $('bMold').querySelectorAll('[data-mold]').forEach(t=>thumbBig(t.querySelector('canvas'), {moldura:t.dataset.mold||null}));
 }
