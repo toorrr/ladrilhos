@@ -184,7 +184,7 @@ body.embed .stage{aspect-ratio:auto;max-height:none;height:100vh}
     <div class="modes" role="tablist" aria-label="Modo">
       <button role="tab" id="mDes" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7"/><rect x="13" y="4" width="7" height="7"/><rect x="4" y="13" width="7" height="7"/><rect x="13" y="13" width="7" height="7"/></svg>Escolher desenho</button>
       <button role="tab" id="mPin" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5-8 8-5-5z"/><path d="M7 12c-2 0-3 1.5-3 3.5S3 20 3 20s3 0 5-.5 3.5-2 3.5-3.5"/></svg>Pintar à mão</button>
-      <button role="tab" id="mBig" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M4 4l16 16"/></svg>Piso 20×20</button>
+      <button role="tab" id="mBig" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16"/><path d="M4 4l16 16"/></svg>Piso 40×40</button>
     </div>
 
     <div id="paneDes">
@@ -1508,7 +1508,7 @@ document.querySelectorAll('[data-close]').forEach(b=>b.onclick = closeSheets);
 
 /* ---------- Chão: rejunte, alinhamento ---------- */
 function updTotals(){
-  if(mode==='big'){ $('resumo').textContent = `${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(bigGrid().total)} pisos 20×20 · rejunte ${String(S.grout).replace('.',',')} mm`; return; }
+  if(mode==='big'){ $('resumo').textContent = `${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(bigGrid().total)} pisos 40×40 · rejunte ${String(S.grout).replace('.',',')} mm`; return; }
   $('resumo').textContent = `${(FLOOR_AREA/1e4).toLocaleString('pt-BR',{maximumFractionDigits:2})} m² · ${fmt(G.total)} ladrilhos 10×10 · rejunte ${String(S.grout).replace('.',',')} mm`;
   $('totals').textContent = `${fmt(G.total)} ladrilhos no total, ${fmt(G.cut)} deles cortados junto às paredes. Sem a margem de perda.`;
 }
@@ -1670,10 +1670,10 @@ $('linkBtn').onclick = async ()=>{
 let toastT = 0;
 function toast(m){ const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(()=>t.classList.remove('show'), 2600); }
 
-/* ---------- Piso 20×20: pisos com desenho, que giram, e molduras ----------
+/* ---------- Piso 40×40: pisos com desenho, que giram, e molduras ----------
    Cada desenho pinta um quadrado 0..1 com o lado "de cima" em y=0. Girar = rodar 90° no sentido do relógio.
    Desenhos tirados das fotos de 10/11 (primeira e última foto são o mesmo piso). */
-const BT = 20;
+const BT = 40;
 function poly(c, pts){ c.beginPath(); pts.forEach(([x,y],n)=>n ? c.lineTo(x,y) : c.moveTo(x,y)); c.closePath(); c.fill(); }
 const meia = pts=>pts.map(([x,y])=>[1-x,1-y]);
 function disco(c, x, y, r, a0=0, a1=2*Math.PI){ c.beginPath(); c.moveTo(x,y); c.arc(x,y,r,a0,a1); c.closePath(); c.fill(); }
@@ -1885,7 +1885,7 @@ function drawBigThumbs(){
 function updBigQty(){
   const {rows, total} = bigCounts();
   $('bQty').innerHTML = rows.map(([t,nome,n,cut],x)=>`<div class="bq"><canvas data-q="${x}" data-t="${t}"></canvas><span class="nm">${esc(nome)}</span><span class="n">${fmt(n)}</span>${cut && t===0 ? `<span class="sub">${fmt(cut)} cortados junto às paredes</span>` : ''}</div>`).join('');
-  $('bTot').textContent = `${fmt(total)} peças de 20×20 no total. Sem a margem de perda.`;
+  $('bTot').textContent = `${fmt(total)} peças de 40×40 no total. Sem a margem de perda.`;
   const P = PISO[S.big.piso], kp = corP(S.big.piso), m = S.big.moldura && MOLDS[S.big.moldura], km = m && corM(S.big.moldura);
   $('bQty').querySelectorAll('canvas').forEach(cv=>{ const [c,w] = sqCanvas(cv); pintaPeca(c, +cv.dataset.t, 0, 0, 0, w, P, kp, m, km); });
 }
@@ -1936,7 +1936,7 @@ function pngBig(){
   drawScene(x, k, pad*k, pad*k, 1, w, floorH, false, 32);
   x.fillStyle = C_BG; x.fillRect(0,floorH,w,legH);
   x.fillStyle = '#2A221D'; x.font = '700 40px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif'; x.textBaseline = 'middle';
-  x.fillText(`Ladrilhos da sala · ${fmt(total)} pisos 20×20 · rejunte ${String(S.grout).replace('.',',')} mm`, pad*k, floorH+24);
+  x.fillText(`Ladrilhos da sala · ${fmt(total)} pisos 40×40 · rejunte ${String(S.grout).replace('.',',')} mm`, pad*k, floorH+24);
   x.font = '500 32px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
   const P = PISO[S.big.piso], kp = corP(S.big.piso), m = S.big.moldura && MOLDS[S.big.moldura], km = m && corM(S.big.moldura);
   rows.forEach(([t,nome,n],i)=>{
